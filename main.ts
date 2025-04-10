@@ -195,7 +195,7 @@ function generateLoginPage(errorMessage = ""): Response {
     `;
   return new Response(html, {
     status: 401, // Unauthorized
-    headers: { "Content-Type": "text/html; charset=UTF-8", 'WWW-Authenticate': 'Basic realm="API Proxy"' }, // Include WWW-Authenticate header
+    headers: { "Content-Type": "text/html; charset=UTF-8" },
   });
 }
 
@@ -248,12 +248,13 @@ async function main(request: Request): Promise<Response> {
     }
 
     const authenticated = await isAuthenticated(request);
-    if (!authenticated && !Object.keys(apiMapping).some(prefix => pathname.startsWith(prefix))) {
+    if (!authenticated) {
       console.log(`需要身份验证: ${pathname}`);
       if (pathname === "/" || pathname === "/index.html") {
-         return generateLoginPage();
+        return generateLoginPage();
       } else {
-          return new Response("Unauthorized", { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="API Proxy"' } });
+          // Do not send WWW-Authenticate header for API paths
+          return new Response(generateLoginPage().body, { status: 401, headers: generateLoginPage().headers });
       }
     }
 
@@ -337,9 +338,7 @@ async function handleDashboardPage(
     const fullProxyUrl = `https://${domain}${proxyPath}`;
 
     tableRows += `
-      <tr class="service-card animate__animated animate__fadeInUp" style="animation-delay: ${
-      Object.keys(apiMapping).indexOf(proxyPath) * 0.05
-    }s;">
+      <tr class="service-card animate__animated animate__fadeInUp" style="animation-delay: ${Object.keys(apiMapping).indexOf(proxyPath) * 0.05}s;">
         <td>
           <div class="flex items-center">
             <i class="fas fa-robot service-icon" title="${proxyPath.substring(1)}"></i>
