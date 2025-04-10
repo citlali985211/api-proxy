@@ -195,7 +195,7 @@ function generateLoginPage(errorMessage = ""): Response {
     `;
   return new Response(html, {
     status: 401, // Unauthorized
-    headers: { "Content-Type": "text/html; charset=UTF-8" },
+    headers: { "Content-Type": "text/html; charset=UTF-8", 'WWW-Authenticate': 'Basic realm="API Proxy"' }, // Include WWW-Authenticate header
   });
 }
 
@@ -240,7 +240,7 @@ async function main(request: Request): Promise<Response> {
   const pathname = url.pathname;
 
   // --- Authentication Check ---
-  if (!PROXY_PASSWORD) {
+  if (!PROXY_PASSWORD && pathname !== "/login") {
     console.log("跳过身份验证，因为未配置密码。");
   } else {
     if (pathname === "/login" && request.method === "POST") {
@@ -248,10 +248,15 @@ async function main(request: Request): Promise<Response> {
     }
 
     const authenticated = await isAuthenticated(request);
-    if (!authenticated) {
+    if (!authenticated && !Object.keys(apiMapping).some(prefix => pathname.startsWith(prefix))) {
       console.log(`需要身份验证: ${pathname}`);
-      return generateLoginPage();
+      if (pathname === "/" || pathname === "/index.html") {
+         return generateLoginPage();
+      } else {
+          return new Response("Unauthorized", { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="API Proxy"' } });
+      }
     }
+
     console.log(`已验证访问: ${pathname}`);
   }
 
@@ -332,7 +337,9 @@ async function handleDashboardPage(
     const fullProxyUrl = `https://${domain}${proxyPath}`;
 
     tableRows += `
-      <tr class="service-card animate__animated animate__fadeInUp" style="animation-delay: ${Object.keys(apiMapping).indexOf(proxyPath) * 0.05}s;">
+      <tr class="service-card animate__animated animate__fadeInUp" style="animation-delay: ${
+      Object.keys(apiMapping).indexOf(proxyPath) * 0.05
+    }s;">
         <td>
           <div class="flex items-center">
             <i class="fas fa-robot service-icon" title="${proxyPath.substring(1)}"></i>
@@ -645,16 +652,24 @@ async function serveStaticFile(request: Request, filepath: string): Promise<Resp
 console.log(`服务器正在启动... ${new Date().toISOString()}`);
 console.log(`将在端口 ${PROXY_PORT} 上监听`);
 console.log(`代理域名设置为: ${PROXY_DOMAIN}`);
-console.warn(`请通过 HTTPS 访问: https://${PROXY_DOMAIN}/ (假设端口 443 由反向代理处理)`);
+console.warn(
+  `请通过 HTTPS 访问: https://${PROXY_DOMAIN}/ (假设端口 443 由反向代理处理)`
+);
 console.log("可用代理路径:");
-Object.keys(apiMapping).sort().forEach(p => console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`));
+Object.keys(apiMapping)
+  .sort()
+  .forEach((p) =>
+    console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`)
+  );
 
 serve(
   async (req) => {
     try {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
       const response = await main(req);
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`);
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`
+      );
       return response;
     } catch (e) {
       console.error("未捕获的错误:", e);
