@@ -4,21 +4,21 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 
 // --- Configuration ---
 const apiMapping = {
-  '/discord': 'https://discord.com/api',
-  '/telegram': 'https://api.telegram.org',
-  '/openai': 'https://api.openai.com',
-  '/claude': 'https://api.anthropic.com',
-  '/gemini': 'https://generativelanguage.googleapis.com',
-  '/meta': 'https://www.meta.ai/api',
-  '/groq': 'https://api.groq.com/openai',
-  '/xai': 'https://api.x.ai',
-  '/cohere': 'https://api.cohere.ai',
-  '/huggingface': 'https://api-inference.huggingface.co',
-  '/together': 'https://api.together.xyz',
-  '/novita': 'https://api.novita.ai',
-  '/portkey': 'https://api.portkey.ai',
-  '/fireworks': 'https://api.fireworks.ai',
-  '/openrouter': 'https://openrouter.ai/api'
+  "/discord": "https://discord.com/api",
+  "/telegram": "https://api.telegram.org",
+  "/openai": "https://api.openai.com",
+  "/claude": "https://api.anthropic.com",
+  "/gemini": "https://generativelanguage.googleapis.com",
+  "/meta": "https://www.meta.ai/api",
+  "/groq": "https://api.groq.com/openai",
+  "/xai": "https://api.x.ai",
+  "/cohere": "https://api.cohere.ai",
+  "/huggingface": "https://api-inference.huggingface.co",
+  "/together": "https://api.together.xyz",
+  "/novita": "https://api.novita.ai",
+  "/portkey": "https://api.portkey.ai",
+  "/fireworks": "https://api.fireworks.ai",
+  "/openrouter": "https://openrouter.ai/api",
 };
 
 const AUTH_COOKIE_NAME = "proxy_auth_session";
@@ -34,7 +34,8 @@ if (!REQUIRED_PASSWORD) {
 }
 if (!PROXY_DOMAIN) {
   console.error("错误: PROXY_DOMAIN 未设置，请在环境变量中配置！");
-  Deno.exit(1); // 如果域名未设置，退出程序
+  //Deno.exit(1); // 如果域名未设置，退出程序
+  throw new Error("PROXY_DOMAIN 未设置，请在环境变量中配置！"); // 替换为抛出错误
 }
 
 // --- 主请求处理函数 ---
@@ -63,7 +64,7 @@ async function main(request: Request): Promise<Response> {
   if (pathname === "/robots.txt") {
     return new Response("User-agent: *\nDisallow: /", {
       status: 200,
-      headers: { "Content-Type": "text/plain" }
+      headers: { "Content-Type": "text/plain" },
     });
   }
 
@@ -92,7 +93,7 @@ async function main(request: Request): Promise<Response> {
     const response = await fetch(targetUrl, {
       method: request.method,
       headers: headers,
-      body: request.body
+      body: request.body,
     });
 
     const responseHeaders = new Headers(response.headers);
@@ -102,9 +103,8 @@ async function main(request: Request): Promise<Response> {
 
     return new Response(response.body, {
       status: response.status,
-      headers: responseHeaders
+      headers: responseHeaders,
     });
-
   } catch (error) {
     console.error("代理请求失败:", error);
     return new Response("Internal Server Error", { status: 500 });
@@ -115,7 +115,7 @@ async function main(request: Request): Promise<Response> {
 
 /** 处理登录页面 */
 function handleLoginPage(showError = false, attemptedUrl = "/") {
-  const errorMessage = showError ? '<p class="error-message">密码错误，请重试</p>' : '';
+  const errorMessage = showError ? '<p class="error-message">密码错误，请重试</p>' : "";
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="zh">
@@ -151,12 +151,12 @@ function handleLoginPage(showError = false, attemptedUrl = "/") {
 </html>`;
   return new Response(htmlContent, {
     status: 401,
-    headers: { "Content-Type": "text/html; charset=utf-8" }
+    headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 }
 
 /** 处理登录表单提交 */
-async function handleLoginSubmission(req) {
+async function handleLoginSubmission(req: Request): Promise<Response> {
   if (!REQUIRED_PASSWORD) {
     return new Response("服务器未配置密码认证", { status: 500 });
   }
@@ -176,7 +176,7 @@ async function handleLoginSubmission(req) {
         httpOnly: true,
         secure: true,
         sameSite: "Lax",
-        maxAge: 86400 * 30 // 30 天有效期
+        maxAge: 86400 * 30, // 30 天有效期
       });
 
       headers.set("Location", decodeURIComponent(redirectTo));
@@ -192,7 +192,7 @@ async function handleLoginSubmission(req) {
 }
 
 /** 提取前缀和剩余路径 */
-function extractPrefixAndRest(pathname, prefixes) {
+function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | null, string | null] {
   for (const prefix of prefixes) {
     if (pathname.startsWith(prefix)) {
       return [prefix, pathname.slice(prefix.length)];
@@ -231,11 +231,14 @@ if (REQUIRED_PASSWORD) {
   console.warn(`认证已禁用，因为 PROXY_PASSWORD 未设置。访问: https://${PROXY_DOMAIN}:${PROXY_PORT}/`);
 }
 
-serve(async (req) => {
-  try {
-    return await (async () => await main(req))();
-  } catch (e) {
-    console.error(e);
-    return new Response("Internal Server Error", { status: 500 });
-  }
-}, { port: parseInt(PROXY_PORT) });
+serve(
+  async (req) => {
+    try {
+      return await (async () => await main(req))();
+    } catch (e) {
+      console.error(e);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  },
+  { port: parseInt(PROXY_PORT) },
+);
