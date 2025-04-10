@@ -22,7 +22,7 @@ const apiMapping = {
   "/telegram": "https://api.telegram.org",
   "/together": "https://api.together.xyz",
   "/xai": "https://api.x.ai",
-  "/perplexity": "https://www.perplexity.ai", // 添加 Perplexity 代理
+  "/perplexity": "https://api.perplexity.ai", 
 };
 
 // Directly get environment variables from Deno.env
