@@ -4,7 +4,7 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 // --- Configuration ---
 const apiMapping = {
   "/anthropic": "https://api.anthropic.com",
-  "/cerebras": "https://api.cerebras.ai", // Added Cerebras based on original HTML
+  "/cerebras": "https://api.cerebras.ai",
   "/cohere": "https://api.cohere.ai",
   "/discord": "https://discord.com/api",
   "/fireworks": "https://api.fireworks.ai",
@@ -13,16 +13,16 @@ const apiMapping = {
   "/huggingface": "https://api-inference.huggingface.co",
   "/meta": "https://www.meta.ai/api",
   "/novita": "https://api.novita.ai",
-  "/nvidia": "https://integrate.api.nvidia.com", // Added Nvidia based on original HTML
-  "/oaipro": "https://api.oaipro.com",         // Added OAIPro based on original HTML
+  "/nvidia": "https://integrate.api.nvidia.com",
+  "/oaipro": "https://api.oaipro.com",
   "/openai": "https://api.openai.com",
   "/openrouter": "https://openrouter.ai/api",
   "/portkey": "https://api.portkey.ai",
-  "/reka": "https://api.reka.ai",             // Added Reka based on original HTML
+  "/reka": "https://api.reka.ai",
   "/telegram": "https://api.telegram.org",
   "/together": "https://api.together.xyz",
   "/xai": "https://api.x.ai",
-  // Note: Removed /claude as /anthropic seems to be the intended one based on original HTML
+  // Removed /claude as /anthropic seems to be the intended one
 };
 
 // Directly get environment variables from Deno.env
@@ -159,7 +159,7 @@ async function handleDashboardPage(
           </div>
         </td>
         <td><code class="code truncate" title="${targetUrl}">${targetUrl}</code></td>
-        <td><span class="status-badge">在线</span></td> {/* Status is hardcoded for now */}
+        <td><span class="status-badge">在线</span></td>
       </tr>
     `;
   }
@@ -385,12 +385,12 @@ async function handleDashboardPage(
 
           <footer class="footer animate__animated animate__fadeInUp" style="animation-delay: 0.4s;">
               <i class="fas fa-code mr-1"></i> Created by
-              <a href="https://linux.do/u/bbb/summary" target="_blank" rel="noopener noreferrer">
-                  <img src="https://img.imgdd.com/f210f3.7ac6c2d9-138b-4c9b-affc-e2acbb4b0dc8.png" alt="Linux.do Avatar" class="w-4 h-4 mx-1 inline-block align-middle" style="margin-bottom: 2px;">
-                  <strong>bbb</strong>
+              <a href="https://jxufe.icu/u/piter/summary" target="_blank" rel="noopener noreferrer">
+                  <img src="https://jxufe.icu/uploads/default/optimized/1X/24f892ce48f88c91f08d75a7e83cc14c8d41592c_2_32x32.png" alt="Jxufe-NetSec Avatar" class="w-4 h-4 mx-1 inline-block align-middle" style="margin-bottom: 2px;">
+                  <strong>piter</strong>
               </a>
               <span class="hidden md:inline mx-2">|</span>
-              <span>本站服务器由 <a href="https://yxvm.com/" target="_blank" rel="noopener noreferrer"><strong>YxVM</strong></a> 赞助</span>
+              <span>本站由 <a href="https://jxufe.icu" target="_blank" rel="noopener noreferrer"><strong>deno</strong></a> 赞助</span>
           </footer>
       </div>
 
