@@ -3,10 +3,10 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 
 // --- Configuration ---
 const apiMapping = {
-  "/xai": "https://api.x.ai",         
+  "/xai": "https://api.x.ai",
   "/openai": "https://api.openai.com",
   "/gemini": "https://generativelanguage.googleapis.com",
-  "/perplexity": "https://api.perplexity.ai", 
+  "/perplexity": "https://api.perplexity.ai",
 };
 
 // Directly get environment variables from Deno.env
@@ -17,7 +17,8 @@ const AUTH_COOKIE_NAME = "api_proxy_auth_token";
 
 // Check environment variable
 if (!PROXY_DOMAIN) {
-  const errorMsg = "错误: PROXY_DOMAIN 环境变量未设置。请设置它（例如 'export PROXY_DOMAIN=myproxy.example.com'）然后重试。";
+  const errorMsg =
+    "错误: PROXY_DOMAIN 环境变量未设置。请设置它（例如 'export PROXY_DOMAIN=myproxy.example.com'）然后重试。";
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
@@ -39,7 +40,9 @@ async function generateAuthToken(password: string): Promise<string> {
   const data = encoder.encode(password);
   const digest = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(digest));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   return hashHex;
 }
 
@@ -71,7 +74,9 @@ async function isAuthenticated(request: Request): Promise<boolean> {
  * @returns {Response} - 登录页面的 HTML 响应
  */
 function generateLoginPage(errorMessage = ""): Response {
-  const errorHtml = errorMessage ? `<p class="error-message">${errorMessage}</p>` : "";
+  const errorHtml = errorMessage
+    ? `<p class="error-message">${errorMessage}</p>`
+    : "";
   const html = `
     <!DOCTYPE html>
     <html>
@@ -232,9 +237,12 @@ async function main(request: Request): Promise<Response> {
     if (pathname === "/login" && request.method === "POST") {
       return handleLogin(request);
     }
-    
+
     // 如果访问的是主页或索引页，且设置了密码，则需要验证
-    if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
+    if (
+      (pathname === "/" || pathname === "/index.html") &&
+      PROXY_PASSWORD
+    ) {
       const authenticated = await isAuthenticated(request);
       if (!authenticated) {
         console.log(`需要身份验证: ${pathname}`);
@@ -273,7 +281,11 @@ async function main(request: Request): Promise<Response> {
 /**
  * 处理 API 代理请求
  */
-async function handleApiRequest(request: Request, prefix: string, pathname: string): Promise<Response> {
+async function handleApiRequest(
+  request: Request,
+  prefix: string,
+  pathname: string,
+): Promise<Response> {
   const url = new URL(request.url);
   const [_, rest] = extractPrefixAndRest(pathname, [prefix]);
   // 确保路径正确格式化
@@ -285,13 +297,15 @@ async function handleApiRequest(request: Request, prefix: string, pathname: stri
     // 允许传递所有需要的 API 请求头
     for (const [key, value] of request.headers.entries()) {
       // 跳过一些可能导致问题的头部
-      if (!["host", "connection", "content-length"].includes(key.toLowerCase())) {
+      if (!["host", "connection", "content-length"].includes(
+        key.toLowerCase(),
+      )) {
         headers.set(key, value);
       }
     }
 
     console.log(`代理请求到: ${targetUrl}`);
-    
+
     const response = await fetch(targetUrl, {
       method: request.method,
       headers: headers,
@@ -301,8 +315,10 @@ async function handleApiRequest(request: Request, prefix: string, pathname: stri
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set("X-Content-Type-Options", "nosniff");
     responseHeaders.set("Access-Control-Allow-Origin", "*");
-    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    responseHeaders.set("Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS");
+    responseHeaders.set("Access-Control-Allow-Headers",
+      "Content-Type, Authorization");
 
     return new Response(response.body, {
       status: response.status,
@@ -311,14 +327,19 @@ async function handleApiRequest(request: Request, prefix: string, pathname: stri
     });
   } catch (error) {
     console.error(`代理请求失败 for ${targetUrl}:`, error);
-    return new Response("Internal Server Error: Proxy failed.", { status: 500 });
+    return new Response("Internal Server Error: Proxy failed.", {
+      status: 500,
+    });
   }
 }
 
 /**
  * 从路径中提取前缀和剩余部分
  */
-function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | null, string | null] {
+function extractPrefixAndRest(
+  pathname: string,
+  prefixes: string[],
+): [string | null, string | null] {
   prefixes.sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
     if (pathname.startsWith(prefix)) {
@@ -333,7 +354,7 @@ function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | n
  */
 async function handleDashboardPage(
   apiMapping: { [key: string]: string },
-  domain: string
+  domain: string,
 ): Promise<Response> {
   let tableRows = "";
   const sortedPaths = Object.keys(apiMapping).sort();
@@ -349,7 +370,7 @@ async function handleDashboardPage(
           <span class="status-badge online">在线</span>
         </div>
         <div class="card-body">
-          <p><strong>代理地址:</strong> <code>${fullProxyUrl}</code> <button class="copy-btn" onclick="copyToClipboard('${fullProxyUrl}')">复制</button></p>
+          <p><strong>代理地址:</strong> <code>${fullProxyUrl}</code> <button class="copy-btn" data-clipboard-text="${fullProxyUrl}">复制</button></p>
           <p><strong>源地址:</strong> <code>${targetUrl}</code></p>
         </div>
       </div>
@@ -591,14 +612,15 @@ async function handleDashboardPage(
                 ${tableRows}
             </div>
             <div class="footer">
-                © ${new Date().getFullYear()} API 代理服务 - 提供高效的代理解决方案
+                © ${new Date().getFullYear()} API 代理服务 - powered by piter
             </div>
         </div>
 
+        <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
         <script>
-            function copyToClipboard(text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    const btn = event.target;
+            document.addEventListener('DOMContentLoaded', function() {
+                new ClipboardJS('.copy-btn').on('success', function(e) {
+                    const btn = e.trigger;
                     const originalText = btn.textContent;
                     btn.textContent = '已复制!';
                     btn.style.background = '#34d399'; /* 绿色反馈 */
@@ -606,11 +628,12 @@ async function handleDashboardPage(
                         btn.textContent = originalText;
                         btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
                     }, 2000);
-                }).catch(err => {
-                    console.error('复制失败:', err);
+                    e.clearSelection();
+                }).on('error', function(e) {
+                    console.error('复制失败:', e);
                     alert('复制失败，请手动复制');
                 });
-            }
+            });
         </script>
     </body>
     </html>
@@ -625,7 +648,10 @@ async function handleDashboardPage(
 /**
  * 提供静态文件服务
  */
-async function serveStaticFile(request: Request, filepath: string): Promise<Response> {
+async function serveStaticFile(
+  request: Request,
+  filepath: string,
+): Promise<Response> {
   try {
     const resolvedPath = Deno.realPathSync(filepath);
     const projectRoot = Deno.realPathSync(".");
@@ -661,30 +687,32 @@ console.log("可用代理路径:");
 Object.keys(apiMapping)
   .sort()
   .forEach((p) =>
-    console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`)
+    console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`),
   );
 
 serve(
   async (req) => {
     try {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-      
+
       // 处理 OPTIONS 请求（对于跨域请求的预检）
       if (req.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
           headers: {
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Requested-With",
+            "Access-Control-Allow-Methods":
+              "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
+            "Access-Control-Allow-Headers":
+              "Content-Type,Authorization,X-Requested-With",
             "Access-Control-Max-Age": "86400",
           },
         });
       }
-      
+
       const response = await main(req);
       console.log(
-        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`
+        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`,
       );
       return response;
     } catch (e) {
@@ -692,5 +720,5 @@ serve(
       return new Response("Internal Server Error", { status: 500 });
     }
   },
-  { port: parseInt(PROXY_PORT, 10) }
+  { port: parseInt(PROXY_PORT, 10) },
 );
