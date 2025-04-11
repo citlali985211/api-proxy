@@ -112,6 +112,11 @@ async function main(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
+  // Add status endpoint for uptime-kuma
+  if (pathname === "/status") {
+    return new Response("OK", { status: 200 });
+  }
+
   const [prefix, _] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
   const isApiEndpoint = prefix !== null;
 
@@ -121,7 +126,8 @@ async function main(request: Request): Promise<Response> {
     }
     if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
       const authenticated = await isAuthenticated(request);
-      if (!authenticated) {
+      // Allow access to /status without authentication
+      if (!authenticated && pathname !== "/status") {
         return generateLoginPage();
       }
     }
@@ -301,7 +307,7 @@ async function handleDashboardPage(
                 line-height: 1.6;
             }
             .overlay {
-                background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.85)); /* 调整透明度 */
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.65)); /* 更低的透明度 */
                 backdrop-filter: blur(8px);
                 min-height: 100vh;
                 padding: clamp(20px, 5vw, 50px); /* Responsive padding */
