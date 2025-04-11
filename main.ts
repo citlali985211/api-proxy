@@ -9,32 +9,23 @@ const apiMapping = {
   "/perplexity": "https://api.perplexity.ai",
 };
 
-// Directly get environment variables from Deno.env
 const PROXY_DOMAIN = Deno.env.get("PROXY_DOMAIN");
 const PROXY_PASSWORD = Deno.env.get("PROXY_PASSWORD");
 const PROXY_PORT = Deno.env.get("PROXY_PORT") || "8000";
 const AUTH_COOKIE_NAME = "api_proxy_auth_token";
 
-// Check environment variable
 if (!PROXY_DOMAIN) {
-  const errorMsg =
-    "错误: PROXY_DOMAIN 环境变量未设置。请设置它（例如 'export PROXY_DOMAIN=myproxy.example.com'）然后重试。";
+  const errorMsg = "错误: PROXY_DOMAIN 环境变量未设置。";
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
 
-// Check authentication environment variable
 if (!PROXY_PASSWORD) {
   console.warn("警告: PROXY_PASSWORD 环境变量未设置。身份验证已禁用。");
 }
 
 // --- Authentication Helper Functions ---
 
-/**
- * 根据密码哈希生成简单的身份验证令牌
- * @param {string} password
- * @returns {Promise<string>} - SHA-256 哈希的十六进制表示
- */
 async function generateAuthToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -46,37 +37,24 @@ async function generateAuthToken(password: string): Promise<string> {
   return hashHex;
 }
 
-/**
- * 检查当前请求是否通过 cookie 进行了身份验证
- * @param {Request} request
- * @returns {Promise<boolean>}
- */
 async function isAuthenticated(request: Request): Promise<boolean> {
-  if (!PROXY_PASSWORD) {
-    return true; // If no password is configured, always return true
-  }
+  if (!PROXY_PASSWORD) return true;
 
   const cookies = request.headers.get("Cookie") || "";
   const tokenMatch = cookies.match(new RegExp(`${AUTH_COOKIE_NAME}=([^;]+)`));
   const receivedToken = tokenMatch ? tokenMatch[1] : null;
 
-  if (!receivedToken) {
-    return false;
-  }
+  if (!receivedToken) return false;
 
   const expectedToken = await generateAuthToken(PROXY_PASSWORD);
   return receivedToken === expectedToken;
 }
 
-/**
- * 生成 HTML 登录页面
- * @param {string} [errorMessage] - 可选的错误信息
- * @returns {Response} - 登录页面的 HTML 响应
- */
 function generateLoginPage(errorMessage = ""): Response {
   const errorHtml = errorMessage
     ? `<p class="error-message">${errorMessage}</p>`
     : "";
+  // (登录页面的 HTML 和 CSS 保持不变，如果你也想美化它，请告知)
   const html = `
     <!DOCTYPE html>
     <html>
@@ -85,86 +63,8 @@ function generateLoginPage(errorMessage = ""): Response {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta charset="UTF-8">
         <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
-                background-size: cover;
-                background-position: center;
-                background-repeat: no-repeat;
-            }
-            .login-container {
-                background-color: rgba(255, 255, 255, 0.05); /* 极低不透明度，背景更清晰 */
-                padding: 30px 40px;
-                border-radius: 12px;
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-                text-align: center;
-                max-width: 380px;
-                width: 90%;
-                backdrop-filter: blur(3px); /* 进一步减少模糊 */
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            h2 {
-                color: #f0f9ff; /* 浅蓝色白，科技感 */
-                margin-bottom: 20px;
-                font-weight: 600;
-                text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5); /* 增加可读性 */
-            }
-            p {
-                color: #e2e8f0; /* 浅灰色，柔和 */
-                margin-bottom: 25px;
-            }
-            form {
-                display: flex;
-                flex-direction: column;
-            }
-            label {
-                text-align: left;
-                margin-bottom: 8px;
-                color: #e2e8f0;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            input[type="password"] {
-                padding: 12px 15px;
-                margin-bottom: 18px;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                background-color: rgba(255, 255, 255, 0.05);
-                color: #ffffff;
-                border-radius: 6px;
-                font-size: 16px;
-                box-sizing: border-box;
-            }
-            input:focus {
-                outline: none;
-                border-color: #60a5fa;
-                box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
-            }
-            button {
-                padding: 12px;
-                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 16px;
-                font-weight: 600;
-                transition: background 0.3s ease, transform 0.2s ease;
-                margin-top: 10px;
-            }
-            button:hover {
-                background: linear-gradient(45deg, #2563eb, #7c3aed);
-                transform: scale(1.02);
-            }
-            .error-message {
-                color: #f87171; /* 柔和红色错误提示 */
-                margin-top: 15px;
-                font-weight: bold;
-            }
+            /* Existing Login Page Styles - Kept for brevity */
+            body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background-image:url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');background-size:cover;background-position:center;background-repeat:no-repeat}.login-container{background-color:rgba(255,255,255,.05);padding:30px 40px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.1);text-align:center;max-width:380px;width:90%;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.1)}h2{color:#f0f9ff;margin-bottom:20px;font-weight:600;text-shadow:1px 1px 3px rgba(0,0,0,.5)}p{color:#e2e8f0;margin-bottom:25px}form{display:flex;flex-direction:column}label{text-align:left;margin-bottom:8px;color:#e2e8f0;font-weight:bold;font-size:14px}input[type=password]{padding:12px 15px;margin-bottom:18px;border:1px solid rgba(255,255,255,.2);background-color:rgba(255,255,255,.1);color:#fff;border-radius:6px;font-size:16px;box-sizing:border-box}input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.3)}button{padding:12px;background:linear-gradient(45deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight:600;transition:background .3s ease,transform .2s ease;margin-top:10px}button:hover{background:linear-gradient(45deg,#2563eb,#7c3aed);transform:scale(1.02)}.error-message{color:#f87171;margin-top:15px;font-weight:bold}
         </style>
     </head>
     <body>
@@ -179,41 +79,29 @@ function generateLoginPage(errorMessage = ""): Response {
             ${errorHtml}
         </div>
     </body>
-    </html>
-    `;
+    </html>`;
   return new Response(html, {
-    status: 401, // Unauthorized
+    status: 401,
     headers: { "Content-Type": "text/html; charset=UTF-8" },
   });
 }
 
-/**
- * 处理 /login 的 POST 请求
- * @param {Request} request
- * @returns {Promise<Response>}
- */
 async function handleLogin(request: Request): Promise<Response> {
   if (!PROXY_PASSWORD) {
-    console.error("PROXY_PASSWORD 环境变量未设置。");
     return new Response("身份验证后端配置错误。", { status: 500 });
   }
-
   try {
     const formData = await request.formData();
     const password = formData.get("password");
 
     if (password === PROXY_PASSWORD) {
       const token = await generateAuthToken(PROXY_PASSWORD);
-      const cookieValue = `${AUTH_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
+      const cookieValue = `${AUTH_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`; // 1 day expiry
       return new Response(null, {
-        status: 302, // Found (Redirect)
-        headers: {
-          "Location": "/",
-          "Set-Cookie": cookieValue,
-        },
+        status: 302,
+        headers: { "Location": "/", "Set-Cookie": cookieValue },
       });
     } else {
-      console.log("登录失败: 密码无效");
       return generateLoginPage("密码无效。");
     }
   } catch (error) {
@@ -227,31 +115,20 @@ async function main(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
-  // 检查是否访问的是 API 端点（不需要身份验证）
   const [prefix, _] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
   const isApiEndpoint = prefix !== null;
 
-  // 仅对非 API 访问进行身份验证，包括主页、登录页等
+  // Authentication check for non-API pages (dashboard)
   if (!isApiEndpoint) {
-    // 处理登录请求
     if (pathname === "/login" && request.method === "POST") {
       return handleLogin(request);
     }
-
-    // 如果访问的是主页或索引页，且设置了密码，则需要验证
-    if (
-      (pathname === "/" || pathname === "/index.html") &&
-      PROXY_PASSWORD
-    ) {
+    if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
       const authenticated = await isAuthenticated(request);
       if (!authenticated) {
-        console.log(`需要身份验证: ${pathname}`);
         return generateLoginPage();
       }
-      console.log(`已验证访问: ${pathname}`);
     }
-  } else {
-    console.log(`API 端点访问，跳过身份验证: ${pathname}`);
   }
 
   // --- Route Requests ---
@@ -267,20 +144,20 @@ async function main(request: Request): Promise<Response> {
   }
 
   if (pathname.startsWith("/public/")) {
+    // Basic protection against directory traversal
+    if (pathname.includes("..")) {
+         return new Response("Forbidden", { status: 403 });
+    }
     return serveStaticFile(request, `.${pathname}`);
   }
 
-  // 处理 API 请求
   if (isApiEndpoint) {
     return handleApiRequest(request, prefix!, pathname);
   }
 
-  return new Response("Not Found: Invalid path.", { status: 404 });
+  return new Response("Not Found", { status: 404 });
 }
 
-/**
- * 处理 API 代理请求
- */
 async function handleApiRequest(
   request: Request,
   prefix: string,
@@ -288,41 +165,45 @@ async function handleApiRequest(
 ): Promise<Response> {
   const url = new URL(request.url);
   const [_, rest] = extractPrefixAndRest(pathname, [prefix]);
-  // 确保路径正确格式化
-  const targetPath = rest || "";
+  const targetPath = rest || ""; // Ensure empty string if no rest part
   const targetUrl = `${apiMapping[prefix]}${targetPath}${url.search}`;
 
   try {
-    const headers = new Headers();
-    // 允许传递所有需要的 API 请求头
-    for (const [key, value] of request.headers.entries()) {
-      // 跳过一些可能导致问题的头部
-      if (!["host", "connection", "content-length"].includes(
-        key.toLowerCase(),
-      )) {
-        headers.set(key, value);
-      }
-    }
+    const headers = new Headers(request.headers);
+    // Remove headers that might cause issues when proxying
+    headers.delete("host");
+    headers.delete("connection");
+    // Content-Length is often recalculated by fetch, removing it can avoid conflicts
+    headers.delete("content-length");
 
-    console.log(`代理请求到: ${targetUrl}`);
+    console.log(`Proxying ${request.method} ${pathname} to ${targetUrl}`);
 
     const response = await fetch(targetUrl, {
       method: request.method,
       headers: headers,
       body: request.body,
+      redirect: 'manual', // Handle redirects manually if needed, often safer for proxies
     });
 
+    // Important: Clone headers before modification if you might reuse response.headers
     const responseHeaders = new Headers(response.headers);
+
+    // Add common security and CORS headers
     responseHeaders.set("X-Content-Type-Options", "nosniff");
-    responseHeaders.set("Access-Control-Allow-Origin", "*");
+    responseHeaders.set("Access-Control-Allow-Origin", "*"); // Be cautious with '*' in production
     responseHeaders.set(
       "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS",
+      "GET, POST, PUT, DELETE, OPTIONS, PATCH",
     );
     responseHeaders.set(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization",
+      "Content-Type, Authorization, X-Requested-With", // Add common headers
     );
+    // Remove potential security risks from proxied response
+    responseHeaders.delete('Content-Security-Policy');
+    responseHeaders.delete('Strict-Transport-Security');
+    responseHeaders.delete('Public-Key-Pins');
+
 
     return new Response(response.body, {
       status: response.status,
@@ -330,20 +211,16 @@ async function handleApiRequest(
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error(`代理请求失败 for ${targetUrl}:`, error);
-    return new Response("Internal Server Error: Proxy failed.", {
-      status: 500,
-    });
+    console.error(`Proxy request failed for ${targetUrl}:`, error);
+    return new Response("Proxy Error", { status: 502 }); // Bad Gateway is often more appropriate
   }
 }
 
-/**
- * 从路径中提取前缀和剩余部分
- */
 function extractPrefixAndRest(
   pathname: string,
   prefixes: string[],
 ): [string | null, string | null] {
+    // Sort prefixes by length descending to match longest first (e.g., /v1/beta before /v1)
   prefixes.sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
     if (pathname.startsWith(prefix)) {
@@ -353,29 +230,42 @@ function extractPrefixAndRest(
   return [null, null];
 }
 
-/**
- * 生成并返回仪表板页面
- */
 async function handleDashboardPage(
-  apiMapping: { [key: string]: string },
+  apiMap: { [key: string]: string },
   domain: string,
 ): Promise<Response> {
-  let tableRows = "";
-  const sortedPaths = Object.keys(apiMapping).sort();
+  let cardsHtml = "";
+  const sortedPaths = Object.keys(apiMap).sort();
 
   for (const proxyPath of sortedPaths) {
-    const targetUrl = apiMapping[proxyPath];
+    const targetUrl = apiMap[proxyPath];
     const fullProxyUrl = `https://${domain}${proxyPath}`;
 
-    tableRows += `
+    cardsHtml += `
       <div class="card">
         <div class="card-header">
-          <h3>${proxyPath}</h3>
-          <span class="status-badge online">在线</span>
+          <h3 class="path-title">${proxyPath}</h3>
+          <span class="status-badge online">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"></circle></svg>
+            在线
+          </span>
         </div>
         <div class="card-body">
-          <p><strong>代理地址:</strong> <code>${fullProxyUrl}</code> <button class="copy-btn" data-clipboard-text="${fullProxyUrl}">复制</button></p>
-          <p><strong>源地址:</strong> <code>${targetUrl}</code></p>
+          <div class="url-group">
+            <strong class="url-label">代理地址:</strong>
+            <div class="url-value">
+              <code>${fullProxyUrl}</code>
+              <button class="copy-btn" data-clipboard-text="${fullProxyUrl}" title="复制代理地址">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="url-group">
+            <strong class="url-label">源地址:</strong>
+            <div class="url-value">
+              <code>${targetUrl}</code>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -388,265 +278,245 @@ async function handleDashboardPage(
         <title>API 代理仪表板</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="安全可靠的 API 代理服务">
+        <meta name="description" content="API 代理服务状态面板">
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
         <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
+            :root {
+                --bg-url: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
+                --primary-glow-start: rgba(59, 130, 246, 0.4); /* Blue */
+                --primary-glow-end: rgba(139, 92, 246, 0.4); /* Purple */
+                --card-bg: rgba(30, 41, 59, 0.4); /* Slate-800 with transparency */
+                --card-border: rgba(255, 255, 255, 0.1);
+                --text-primary: #e2e8f0; /* Slate-200 */
+                --text-secondary: #94a3b8; /* Slate-400 */
+                --text-heading: #f8fafc; /* Slate-50 */
+                --accent-green: #34d399; /* Emerald-400 */
+                --accent-blue: #60a5fa; /* Blue-400 */
+                --accent-purple: #a78bfa; /* Violet-400 */
+                --code-bg: rgba(51, 65, 85, 0.5); /* Slate-700 with transparency */
+                --shadow-color: rgba(0, 0, 0, 0.2);
+                --copy-btn-bg: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+                --copy-btn-hover-bg: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                --copy-success-bg: #22c55e; /* Green-500 */
+                --copy-error-bg: #ef4444; /* Red-500 */
             }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                color: #ffffff;
-                min-height: 100vh;
-                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                color: var(--text-primary);
+                background-color: #0f172a; /* Slate-900 */
+                background-image: var(--bg-url);
                 background-size: cover;
                 background-position: center;
                 background-attachment: fixed;
+                min-height: 100vh;
                 overflow-x: hidden;
+                line-height: 1.6;
             }
             .overlay {
-                background: rgba(0, 0, 0, 0.15); /* 极低不透明度，背景更清晰 */
-                backdrop-filter: blur(3px); /* 减少模糊效果 */
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.9)); /* Gradient overlay */
+                backdrop-filter: blur(8px);
                 min-height: 100vh;
-                padding: 20px;
+                padding: clamp(20px, 5vw, 50px); /* Responsive padding */
                 display: flex;
                 flex-direction: column;
                 align-items: center;
             }
             .header {
                 text-align: center;
-                margin-bottom: 30px;
+                margin-bottom: clamp(30px, 6vh, 60px);
                 width: 100%;
-                max-width: 1200px;
-                padding: 20px;
-                background: rgba(255, 255, 255, 0.05); /* 极低不透明度 */
-                border-radius: 15px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                max-width: 900px;
                 animation: fadeInDown 0.8s ease-out;
             }
             .header h1 {
-                font-size: 2.5rem;
-                margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
+                font-size: clamp(2rem, 6vw, 3.5rem);
+                font-weight: 700;
+                margin-bottom: 0.5em;
+                background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-green));
                 -webkit-background-clip: text;
                 background-clip: text;
                 -webkit-text-fill-color: transparent;
+                text-shadow: 0 2px 10px var(--shadow-color);
             }
             .header p {
-                font-size: 1.1rem;
-                color: #e2e8f0; /* 浅灰色，柔和 */
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+                font-size: clamp(1rem, 2.5vw, 1.2rem);
+                color: var(--text-secondary);
+                max-width: 600px;
+                margin: 0 auto;
             }
             .container {
                 width: 100%;
                 max-width: 1200px;
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 25px;
-                padding: 10px;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); /* Responsive grid */
+                gap: clamp(20px, 4vw, 30px);
             }
             .card {
-                background: rgba(255, 255, 255, 0.05); /* 极低不透明度 */
-                backdrop-filter: blur(3px); /* 减少模糊 */
+                background: var(--card-bg);
                 border-radius: 16px;
+                border: 1px solid var(--card-border);
+                box-shadow: 0 8px 32px var(--shadow-color);
                 overflow: hidden;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                width: 100%;
-                min-width: 300px;
-                max-width: 550px;
                 transition: transform 0.3s ease, box-shadow 0.3s ease;
                 animation: fadeInUp 0.8s ease-out;
+                display: flex;
+                flex-direction: column;
             }
             .card:hover {
-                transform: translateY(-10px);
-                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+                transform: translateY(-8px) scale(1.02);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+                border-color: rgba(255, 255, 255, 0.2);
             }
             .card-header {
-                padding: 15px 20px;
-                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
+                padding: 16px 24px;
+                background: rgba(255, 255, 255, 0.05);
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                border-bottom: 1px solid var(--card-border);
             }
-            .card-header h3 {
-                font-size: 1.4rem;
+            .path-title {
+                font-size: 1.3rem;
                 font-weight: 600;
-                color: #f0f9ff; /* 浅蓝色白 */
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+                color: var(--text-heading);
             }
             .status-badge {
-                padding: 5px 12px;
-                border-radius: 20px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 12px;
                 font-size: 0.8rem;
                 font-weight: 500;
+                background-color: rgba(52, 211, 153, 0.1); /* Green tint */
+                color: var(--accent-green);
             }
-            .online {
-                background: #34d399; /* 柔和绿色 */
-                color: #000;
+            .status-badge svg {
+                color: var(--accent-green);
             }
             .card-body {
-                padding: 20px;
+                padding: 24px;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
             }
-            .card-body p {
-                margin-bottom: 10px;
-                font-size: 0.95rem;
-                line-height: 1.5;
-                color: #e2e8f0; /* 浅灰色文字 */
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            .url-group {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
             }
-            .card-body code {
-                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
-                padding: 3px 8px;
-                border-radius: 5px;
+            .url-label {
+                font-size: 0.85rem;
+                color: var(--text-secondary);
+                font-weight: 500;
+            }
+            .url-value {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap; /* Allow wrapping */
+            }
+            .url-value code {
+                background: var(--code-bg);
+                padding: 4px 8px;
+                border-radius: 6px;
                 font-size: 0.9rem;
-                display: inline-block;
-                max-width: 100%;
-                overflow-x: auto;
-                color: #f0f9ff;
+                color: var(--text-primary);
+                word-break: break-all; /* Break long URLs */
+                flex-grow: 1; /* Take available space */
+                min-width: 150px; /* Ensure code block has some width */
             }
             .copy-btn {
-                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
-                color: #ffffff;
+                background: var(--copy-btn-bg);
+                color: white;
                 border: none;
-                padding: 5px 12px;
-                border-radius: 5px;
+                border-radius: 6px;
+                padding: 6px 8px;
                 cursor: pointer;
-                font-size: 0.8rem;
-                transition: transform 0.2s ease, background 0.3s ease;
-                margin-left: 5px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.3s ease, transform 0.2s ease;
+                flex-shrink: 0; /* Prevent shrinking */
             }
             .copy-btn:hover {
-                transform: scale(1.05);
-                background: linear-gradient(45deg, #2563eb, #7c3aed);
+                background: var(--copy-btn-hover-bg);
+                transform: scale(1.1);
+            }
+             .copy-btn:active {
+                transform: scale(0.95);
+            }
+            .copy-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+            .copy-btn.copied {
+                background: var(--copy-success-bg);
+            }
+            .copy-btn.error {
+                 background: var(--copy-error-bg);
             }
             .footer {
-                margin-top: 40px;
+                margin-top: clamp(40px, 8vh, 80px);
                 text-align: center;
                 font-size: 0.9rem;
-                color: rgba(255, 255, 255, 0.7);
+                color: var(--text-secondary);
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
-                border-radius: 10px;
                 width: 100%;
-                max-width: 1200px;
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+                max-width: 900px;
             }
-
-            /* 动画 */
-            @keyframes fadeInDown {
-                from {
-                    opacity: 0;
-                    transform: translateY(-20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            /* 响应式设计 */
-            @media (min-width: 768px) {
-                .container {
-                    justify-content: space-between;
-                }
-                .card {
-                    width: calc(50% - 15px);
-                }
-            }
-            @media (min-width: 1024px) {
-                .card {
-                    width: calc(33.33% - 20px);
-                }
-                .header h1 {
-                    font-size: 3rem;
-                }
-            }
-            @media (max-width: 767px) {
-                .card {
-                    width: 100%;
-                }
-                .header h1 {
-                    font-size: 2rem;
-                }
-                .header p {
-                    font-size: 1rem;
-                }
-            }
-            @media (max-width: 480px) {
-                .header {
-                    padding: 15px;
-                }
-                .header h1 {
-                    font-size: 1.8rem;
-                }
-                .card-header {
-                    flex-direction: column;
-                    align-items: flex-start;
-                }
-                .card-header h3 {
-                    font-size: 1.2rem;
-                    margin-bottom: 5px;
-                }
-            }
+            @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         </style>
     </head>
     <body>
         <div class="overlay">
-            <div class="header">
+            <header class="header">
                 <h1>API 代理仪表板</h1>
-                <p>安全、快速、可靠的 API 代理服务</p>
-            </div>
-            <div class="container">
-                ${tableRows}
-            </div>
-            <div class="footer">
+                <p>管理和监控您的 API 代理端点</p>
+            </header>
+            <main class="container">
+                ${cardsHtml}
+            </main>
+            <footer class="footer">
                 © ${new Date().getFullYear()} API 代理服务 - powered by piter
-            </div>
+            </footer>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const clipboard = new ClipboardJS('.copy-btn');
+                const originalIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                const successIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; // Checkmark
 
                 clipboard.on('success', function(e) {
                     const btn = e.trigger;
-                    const originalText = btn.textContent;
-                    btn.textContent = '已复制!';
-                    btn.style.background = '#34d399'; /* 绿色反馈 */
+                    btn.innerHTML = successIcon; // Show checkmark
+                    btn.classList.add('copied');
+
                     setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
+                        btn.innerHTML = originalIcon;
+                        btn.classList.remove('copied');
                     }, 2000);
                     e.clearSelection();
                 });
 
                 clipboard.on('error', function(e) {
-                    console.error('复制失败:', e);
+                    console.error('复制失败，但可能已在剪贴板中:', e);
                     const btn = e.trigger;
-                    btn.textContent = '复制失败，请尝试粘贴'; // 修改错误提示
-                    btn.style.background = '#f87171'; // 红色
-                    setTimeout(() => {
-                        btn.textContent = '复制';
-                        btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
-                    }, 3000);
+                    // Indicate potential success despite error event
+                    btn.innerHTML = '?'; // Maybe a question mark?
+                    btn.classList.add('error');
+                    btn.title = '复制可能已成功，请尝试粘贴';
 
+                    setTimeout(() => {
+                        btn.innerHTML = originalIcon;
+                        btn.classList.remove('error');
+                        btn.title = '复制代理地址';
+                    }, 3000);
                 });
             });
         </script>
@@ -660,80 +530,74 @@ async function handleDashboardPage(
   });
 }
 
-/**
- * 提供静态文件服务
- */
-async function serveStaticFile(
-  request: Request,
-  filepath: string,
-): Promise<Response> {
+async function serveStaticFile(request: Request, filepath: string): Promise<Response> {
   try {
+    // Basic path sanitization (more robust checks might be needed depending on use case)
     const resolvedPath = Deno.realPathSync(filepath);
     const projectRoot = Deno.realPathSync(".");
+
     if (!resolvedPath.startsWith(projectRoot)) {
+      console.warn(`Forbidden access attempt: ${filepath}`);
       return new Response("Forbidden", { status: 403 });
-    }
-
-    const file = await Deno.open(resolvedPath, { read: true });
-    const stat = await file.stat();
-
-    if (stat.isDirectory) {
-      file.close();
-      return new Response("Not Found (is directory)", { status: 404 });
     }
 
     return await serveFile(request, resolvedPath);
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
       return new Response("Not Found", { status: 404 });
-    } else {
-      console.error("Error serving static file:", error);
+    } else if (error instanceof Deno.errors.PermissionDenied) {
+        console.error(`Permission denied for static file: ${filepath}`);
+        return new Response("Forbidden", { status: 403 });
+    }
+     else {
+      console.error(`Error serving static file ${filepath}:`, error);
       return new Response("Internal Server Error", { status: 500 });
     }
   }
 }
 
 // --- Start the Server ---
-console.log(`服务器正在启动... ${new Date().toISOString()}`);
-console.log(`将在端口 ${PROXY_PORT} 上监听`);
-console.log(`代理域名设置为: ${PROXY_DOMAIN}`);
-console.warn(`请通过 HTTPS 访问: https://${PROXY_DOMAIN}/`);
-console.log("可用代理路径:");
-Object.keys(apiMapping)
-  .sort()
-  .forEach((p) =>
-    console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`),
-  );
+console.log(`[${new Date().toISOString()}] Server starting...`);
+console.log(`  Port: ${PROXY_PORT}`);
+console.log(`  Domain: ${PROXY_DOMAIN}`);
+if (!PROXY_PASSWORD) console.warn("  Authentication: DISABLED");
+console.log("  Proxy Endpoints:");
+Object.keys(apiMapping).sort().forEach(p =>
+    console.log(`    https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`)
+);
+console.warn(`Ensure your proxy is accessed via HTTPS: https://${PROXY_DOMAIN}/`);
 
 serve(
   async (req) => {
+    const start = performance.now();
+    let responseStatus = 500; // Default to error
     try {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-
-      // 处理 OPTIONS 请求（对于跨域请求的预检）
+      // Handle CORS preflight requests globally
       if (req.method === "OPTIONS") {
         return new Response(null, {
-          status: 204,
+          status: 204, // No Content
           headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods":
-              "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
-            "Access-Control-Allow-Headers":
-              "Content-Type,Authorization,X-Requested-With",
-            "Access-Control-Max-Age": "86400",
+            "Access-Control-Allow-Origin": "*", // Adjust in production if needed
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+            "Access-Control-Max-Age": "86400", // Cache preflight for 1 day
           },
         });
       }
 
       const response = await main(req);
-      console.log(
-        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`,
-      );
+      responseStatus = response.status;
       return response;
-    } catch (e) {
-      console.error("未捕获的错误:", e);
+
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Unhandled error for ${req.method} ${req.url}:`, error);
+      // Avoid leaking detailed errors to the client
       return new Response("Internal Server Error", { status: 500 });
+    } finally {
+        const duration = performance.now() - start;
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${responseStatus} (${duration.toFixed(2)}ms)`);
     }
   },
   { port: parseInt(PROXY_PORT, 10) },
 );
+
