@@ -3,7 +3,7 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 
 // --- Configuration ---
 const apiMapping = {
-  "/xai": "https://api.x.ai",         // Grok (xAI)
+  "/xai": "https://api.x.ai",         
   "/openai": "https://api.openai.com",
   "/gemini": "https://generativelanguage.googleapis.com",
   "/perplexity": "https://api.perplexity.ai", 
@@ -86,8 +86,11 @@ function generateLoginPage(errorMessage = ""): Response {
                 justify-content: center;
                 align-items: center;
                 min-height: 100vh;
-                background-color: #f5f5f5;
                 margin: 0;
+                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
             }
             .login-container {
                 background-color: white;
