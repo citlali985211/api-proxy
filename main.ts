@@ -1,327 +1,3 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { serveFile } from "https://deno.land/std/http/file_server.ts";
-
-// --- Configuration ---
-const apiMapping = {
-  "/xai": "https://api.x.ai",         
-  "/openai": "https://api.openai.com",
-  "/gemini": "https://generativelanguage.googleapis.com",
-  "/perplexity": "https://api.perplexity.ai", 
-};
-
-// Directly get environment variables from Deno.env
-const PROXY_DOMAIN = Deno.env.get("PROXY_DOMAIN");
-const PROXY_PASSWORD = Deno.env.get("PROXY_PASSWORD");
-const PROXY_PORT = Deno.env.get("PROXY_PORT") || "8000";
-const AUTH_COOKIE_NAME = "api_proxy_auth_token";
-
-// Check environment variable
-if (!PROXY_DOMAIN) {
-  const errorMsg = "错误: PROXY_DOMAIN 环境变量未设置。请设置它（例如 'export PROXY_DOMAIN=myproxy.example.com'）然后重试。";
-  console.error(errorMsg);
-  throw new Error(errorMsg);
-}
-
-// Check authentication environment variable
-if (!PROXY_PASSWORD) {
-  console.warn("警告: PROXY_PASSWORD 环境变量未设置。身份验证已禁用。");
-}
-
-// --- Authentication Helper Functions ---
-
-/**
- * 根据密码哈希生成简单的身份验证令牌
- * @param {string} password
- * @returns {Promise<string>} - SHA-256 哈希的十六进制表示
- */
-async function generateAuthToken(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(digest));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  return hashHex;
-}
-
-/**
- * 检查当前请求是否通过 cookie 进行了身份验证
- * @param {Request} request
- * @returns {Promise<boolean>}
- */
-async function isAuthenticated(request: Request): Promise<boolean> {
-  if (!PROXY_PASSWORD) {
-    return true; // If no password is configured, always return true
-  }
-
-  const cookies = request.headers.get("Cookie") || "";
-  const tokenMatch = cookies.match(new RegExp(`${AUTH_COOKIE_NAME}=([^;]+)`));
-  const receivedToken = tokenMatch ? tokenMatch[1] : null;
-
-  if (!receivedToken) {
-    return false;
-  }
-
-  const expectedToken = await generateAuthToken(PROXY_PASSWORD);
-  return receivedToken === expectedToken;
-}
-
-/**
- * 生成 HTML 登录页面
- * @param {string} [errorMessage] - 可选的错误信息
- * @returns {Response} - 登录页面的 HTML 响应
- */
-function generateLoginPage(errorMessage = ""): Response {
-  const errorHtml = errorMessage ? `<p class="error-message">${errorMessage}</p>` : "";
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>需要登录</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta charset="UTF-8">
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
-                background-size: cover;
-                background-position: center;
-                background-repeat: no-repeat;
-            }
-            .login-container {
-                background-color: white;
-                padding: 30px 40px;
-                border-radius: 12px;
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-                text-align: center;
-                max-width: 380px;
-                width: 90%;
-            }
-            h2 {
-                color: #333;
-                margin-bottom: 20px;
-                font-weight: 600;
-            }
-            p {
-                color: #444;
-                margin-bottom: 25px;
-            }
-            form {
-                display: flex;
-                flex-direction: column;
-            }
-            label {
-                text-align: left;
-                margin-bottom: 8px;
-                color: #444;
-                font-weight: bold;
-                font-size: 14px;
-            }
-            input[type="password"] {
-                padding: 12px 15px;
-                margin-bottom: 18px;
-                border: 1px solid #ccc;
-                border-radius: 6px;
-                font-size: 16px;
-                box-sizing: border-box;
-            }
-            input:focus {
-                outline: none;
-                border-color: #007bff;
-                box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-            }
-            button {
-                padding: 12px;
-                background-color: #007bff;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 16px;
-                font-weight: 600;
-                transition: background-color 0.3s ease;
-                margin-top: 10px;
-            }
-            button:hover {
-                background-color: #0056b3;
-            }
-            .error-message {
-                color: #dc3545;
-                margin-top: 15px;
-                font-weight: bold;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="login-container">
-            <h2>需要登录</h2>
-            <p>请输入密码以访问 API 代理。</p>
-            <form action="/login" method="post">
-                <label for="password">密码:</label>
-                <input type="password" id="password" name="password" required>
-                <button type="submit">登录</button>
-            </form>
-            ${errorHtml}
-        </div>
-    </body>
-    </html>
-    `;
-  return new Response(html, {
-    status: 401, // Unauthorized
-    headers: { "Content-Type": "text/html; charset=UTF-8" },
-  });
-}
-
-/**
- * 处理 /login 的 POST 请求
- * @param {Request} request
- * @returns {Promise<Response>}
- */
-async function handleLogin(request: Request): Promise<Response> {
-  if (!PROXY_PASSWORD) {
-    console.error("PROXY_PASSWORD 环境变量未设置。");
-    return new Response("身份验证后端配置错误。", { status: 500 });
-  }
-
-  try {
-    const formData = await request.formData();
-    const password = formData.get("password");
-
-    if (password === PROXY_PASSWORD) {
-      const token = await generateAuthToken(PROXY_PASSWORD);
-      const cookieValue = `${AUTH_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`;
-      return new Response(null, {
-        status: 302, // Found (Redirect)
-        headers: {
-          "Location": "/",
-          "Set-Cookie": cookieValue,
-        },
-      });
-    } else {
-      console.log("登录失败: 密码无效");
-      return generateLoginPage("密码无效。");
-    }
-  } catch (error) {
-    console.error("处理登录表单时出错:", error);
-    return generateLoginPage("登录过程中发生错误。");
-  }
-}
-
-// --- Main Request Handler ---
-async function main(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const pathname = url.pathname;
-
-  // 检查是否访问的是 API 端点（不需要身份验证）
-  const [prefix, _] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
-  const isApiEndpoint = prefix !== null;
-
-  // 仅对非 API 访问进行身份验证，包括主页、登录页等
-  if (!isApiEndpoint) {
-    // 处理登录请求
-    if (pathname === "/login" && request.method === "POST") {
-      return handleLogin(request);
-    }
-    
-    // 如果访问的是主页或索引页，且设置了密码，则需要验证
-    if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
-      const authenticated = await isAuthenticated(request);
-      if (!authenticated) {
-        console.log(`需要身份验证: ${pathname}`);
-        return generateLoginPage();
-      }
-      console.log(`已验证访问: ${pathname}`);
-    }
-  } else {
-    console.log(`API 端点访问，跳过身份验证: ${pathname}`);
-  }
-
-  // --- Route Requests ---
-  if (pathname === "/" || pathname === "/index.html") {
-    return handleDashboardPage(apiMapping, PROXY_DOMAIN);
-  }
-
-  if (pathname === "/robots.txt") {
-    return new Response("User-agent: *\nDisallow: /", {
-      status: 200,
-      headers: { "Content-Type": "text/plain" },
-    });
-  }
-
-  if (pathname.startsWith("/public/")) {
-    return serveStaticFile(request, `.${pathname}`);
-  }
-
-  // 处理 API 请求
-  if (isApiEndpoint) {
-    return handleApiRequest(request, prefix!, pathname);
-  }
-
-  return new Response("Not Found: Invalid path.", { status: 404 });
-}
-
-/**
- * 处理 API 代理请求
- */
-async function handleApiRequest(request: Request, prefix: string, pathname: string): Promise<Response> {
-  const url = new URL(request.url);
-  const [_, rest] = extractPrefixAndRest(pathname, [prefix]);
-  // 确保路径正确格式化
-  const targetPath = rest || "";
-  const targetUrl = `${apiMapping[prefix]}${targetPath}${url.search}`;
-
-  try {
-    const headers = new Headers();
-    // 允许传递所有需要的 API 请求头
-    for (const [key, value] of request.headers.entries()) {
-      // 跳过一些可能导致问题的头部
-      if (!["host", "connection", "content-length"].includes(key.toLowerCase())) {
-        headers.set(key, value);
-      }
-    }
-
-    console.log(`代理请求到: ${targetUrl}`);
-    
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers: headers,
-      body: request.body,
-    });
-
-    const responseHeaders = new Headers(response.headers);
-    responseHeaders.set("X-Content-Type-Options", "nosniff");
-    responseHeaders.set("Access-Control-Allow-Origin", "*");
-    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
-  } catch (error) {
-    console.error(`代理请求失败 for ${targetUrl}:`, error);
-    return new Response("Internal Server Error: Proxy failed.", { status: 500 });
-  }
-}
-
-/**
- * 从路径中提取前缀和剩余部分
- */
-function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | null, string | null] {
-  prefixes.sort((a, b) => b.length - a.length);
-  for (const prefix of prefixes) {
-    if (pathname.startsWith(prefix)) {
-      return [prefix, pathname.slice(prefix.length)];
-    }
-  }
-  return [null, null];
-}
-
 /**
  * 生成并返回仪表板页面
  */
@@ -339,15 +15,24 @@ async function handleDashboardPage(
     tableRows += `
       <tr>
         <td>
-          <div class="flex items-center">
+          <div class="flex-container">
             <code class="code">${fullProxyUrl}</code>
             <button class="copy-button" onclick="copyText('${fullProxyUrl}', this)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+              </svg>
               复制
             </button>
           </div>
         </td>
         <td><code class="code">${targetUrl}</code></td>
-        <td><span class="status-badge">在线</span></td>
+        <td>
+          <div class="status-badge">
+            <span class="pulse"></span>
+            在线
+          </div>
+        </td>
       </tr>
     `;
   }
@@ -361,134 +46,459 @@ async function handleDashboardPage(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="description" content="安全可靠的 API 代理服务">
         <style>
+            :root {
+                --primary: #4f46e5;
+                --primary-hover: #4338ca;
+                --secondary: #06b6d4;
+                --success: #10b981;
+                --card-bg: rgba(255, 255, 255, 0.85);
+                --card-border: rgba(255, 255, 255, 0.3);
+                --text-primary: #1e293b;
+                --text-secondary: #64748b;
+            }
+            
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background-color: #f8fafc;
-                color: #334155;
+                color: var(--text-primary);
                 line-height: 1.6;
-                padding: 20px;
-                margin: 0;
+                min-height: 100vh;
+                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+                position: relative;
+            }
+            
+            body::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(15, 23, 42, 0.4);
+                z-index: -1;
             }
             
             .container {
-                max-width: 1000px;
+                max-width: 1100px;
                 margin: 0 auto;
+                padding: 40px 20px;
+                position: relative;
+                z-index: 1;
             }
             
             header {
-                background: linear-gradient(45deg, #4f46e5, #06b6d4);
+                background: linear-gradient(135deg, rgba(79, 70, 229, 0.85), rgba(6, 182, 212, 0.85));
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
                 color: white;
-                padding: 20px;
-                border-radius: 10px;
+                padding: 30px;
+                border-radius: 16px;
                 text-align: center;
                 margin-bottom: 30px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            header::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(
+                    circle,
+                    rgba(255, 255, 255, 0.1) 0%,
+                    rgba(255, 255, 255, 0) 60%
+                );
+                z-index: 0;
+                animation: rotate 60s linear infinite;
+            }
+            
+            @keyframes rotate {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
             }
             
             h1 {
                 margin: 0;
-                font-size: 24px;
+                font-size: 28px;
+                font-weight: 700;
+                position: relative;
+                z-index: 1;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                letter-spacing: 0.5px;
+            }
+            
+            .card {
+                background: var(--card-bg);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border-radius: 16px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                border: 1px solid var(--card-border);
+                overflow: hidden;
+                transition: all 0.3s ease;
+                margin-bottom: 30px;
             }
             
             table {
                 width: 100%;
-                background-color: white;
-                border-radius: 10px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                border-collapse: collapse;
-                overflow: hidden;
+                border-collapse: separate;
+                border-spacing: 0;
             }
             
             th, td {
-                padding: 15px;
+                padding: 18px 24px;
                 text-align: left;
-                border-bottom: 1px solid #e5e7eb;
             }
             
             th {
-                background-color: #f9fafb;
+                background-color: rgba(249, 250, 251, 0.8);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
                 font-weight: 600;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+                color: var(--text-secondary);
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                font-size: 12px;
+            }
+            
+            th:first-child {
+                border-top-left-radius: 16px;
+            }
+            
+            th:last-child {
+                border-top-right-radius: 16px;
+            }
+            
+            tr:last-child td:first-child {
+                border-bottom-left-radius: 16px;
+            }
+            
+            tr:last-child td:last-child {
+                border-bottom-right-radius: 16px;
+            }
+            
+            tr:not(:last-child) td {
+                border-bottom: 1px solid rgba(229, 231, 235, 0.3);
+            }
+            
+            tr:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .flex-container {
+                display: flex;
+                align-items: center;
+                gap: 12px;
             }
             
             .code {
-                background-color: #f3f4f6;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-family: monospace;
+                background-color: rgba(243, 244, 246, 0.8);
+                padding: 8px 12px;
+                border-radius: 8px;
+                font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                font-size: 13px;
                 word-break: break-all;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(229, 231, 235, 0.5);
+                color: #334155;
             }
             
             .copy-button {
-                background-color: #4f46e5;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                background-color: var(--primary);
                 color: white;
                 border: none;
-                padding: 5px 10px;
-                border-radius: 4px;
+                padding: 8px 12px;
+                border-radius: 8px;
                 cursor: pointer;
-                margin-left: 10px;
-                font-size: 12px;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
             }
             
             .copy-button:hover {
-                background-color: #4338ca;
+                background-color: var(--primary-hover);
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(79, 70, 229, 0.25);
+            }
+            
+            .copy-button:active {
+                transform: translateY(0);
             }
             
             .status-badge {
-                background-color: #10b981;
-                color: white;
-                padding: 4px 8px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background-color: rgba(16, 185, 129, 0.15);
+                color: var(--success);
+                padding: 6px 12px;
                 border-radius: 9999px;
-                font-size: 12px;
-                font-weight: 500;
+                font-size: 13px;
+                font-weight: 600;
+                border: 1px solid rgba(16, 185, 129, 0.3);
+            }
+            
+            .pulse {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background-color: var(--success);
+                box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0% {
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+                }
+                70% {
+                    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+                }
+                100% {
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                }
             }
             
             footer {
                 margin-top: 30px;
                 text-align: center;
+                color: white;
                 font-size: 14px;
-                color: #6b7280;
+                padding: 20px;
+                position: relative;
+                z-index: 1;
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            }
+            
+            .dashboard-stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }
+            
+            .stat-card {
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.5));
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-radius: 12px;
+                padding: 24px;
+                text-align: center;
+                box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+            
+            .stat-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+            }
+            
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+                margin: 0 auto 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                border-radius: 12px;
+                color: white;
+            }
+            
+            .stat-number {
+                font-size: 32px;
+                font-weight: 700;
+                margin-bottom: 5px;
+                color: var(--text-primary);
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            
+            .stat-label {
+                color: var(--text-secondary);
+                font-size: 14px;
+                font-weight: 500;
             }
             
             @media (max-width: 768px) {
-                table {
-                    display: block;
+                .container {
+                    padding: 20px 15px;
+                }
+                
+                header {
+                    padding: 20px;
+                }
+                
+                h1 {
+                    font-size: 24px;
+                }
+                
+                .card {
                     overflow-x: auto;
+                }
+                
+                table {
+                    min-width: 600px;
+                }
+                
+                .dashboard-stats {
+                    grid-template-columns: 1fr;
+                }
+            }
+            
+            .glow {
+                position: absolute;
+                width: 40%;
+                height: 200px;
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(79, 70, 229, 0.3) 0%,
+                    rgba(0, 0, 0, 0) 70%
+                );
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: -1;
+                opacity: 0.6;
+                filter: blur(30px);
+                animation: float 10s ease-in-out infinite;
+            }
+            
+            .glow:nth-child(2) {
+                left: 60%;
+                top: 20%;
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(6, 182, 212, 0.3) 0%,
+                    rgba(0, 0, 0, 0) 70%
+                );
+                animation-delay: -5s;
+            }
+            
+            @keyframes float {
+                0% {
+                    transform: translate(0, 0);
+                }
+                50% {
+                    transform: translate(30px, 30px);
+                }
+                100% {
+                    transform: translate(0, 0);
                 }
             }
         </style>
     </head>
     <body>
         <div class="container">
+            <div class="glow"></div>
+            <div class="glow"></div>
+            
             <header>
-                <h1>API 代理服务</h1>
+                <h1>API 代理服务中心</h1>
             </header>
+            
+            <div class="dashboard-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                            <path d="M6.854 4.646a.5.5 0 0 1 0 .708L4.207 8l2.647 2.646a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 0 1 .708 0zm2.292 0a.5.5 0 0 0 0 .708L11.793 8l-2.647 2.646a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708 0z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-number">${Object.keys(apiMapping).length}</div>
+                    <div class="stat-label">活跃代理</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">正常运行时间</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M9.669.864 8 0 6.331.864l-1.858.282-.842 1.68-1.337 1.32L2.6 6l-.306 1.854 1.337 1.32.842 1.68 1.858.282L8 12l1.669-.864 1.858-.282.842-1.68 1.337-1.32L13.4 6l.306-1.854-1.337-1.32-.842-1.68L9.669.864zm1.196 1.193.684 1.365 1.086 1.072L12.387 6l.248 1.506-1.086 1.072-.684 1.365-1.51.229L8 10.874l-1.355-.702-1.51-.229-.684-1.365-1.086-1.072L3.614 6l-.25-1.506 1.087-1.072.684-1.365 1.51-.229L8 1.126l1.356.702 1.509.229z"/>
+                            <path d="M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1 4 11.794z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-number">A+</div>
+                    <div class="stat-label">安全评级</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2l-2.218-.887zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>
+                        </svg>
+                    </div>
+                    <div class="stat-number">${new Date().getFullYear()}</div>
+                    <div class="stat-label">年度服务</div>
+                </div>
+            </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>代理地址</th>
-                        <th>源地址</th>
-                        <th>状态</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>代理地址</th>
+                            <th>源地址</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
 
             <footer>
-                © ${new Date().getFullYear()} API 代理服务
+                <p>© ${new Date().getFullYear()} API 代理服务 | 安全、高效、可靠</p>
             </footer>
         </div>
 
         <script>
             function copyText(text, button) {
                 navigator.clipboard.writeText(text).then(() => {
-                    const originalText = button.textContent;
-                    button.textContent = '已复制!';
+                    const originalInnerHTML = button.innerHTML;
+                    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg> 已复制!';
                     button.style.backgroundColor = '#10b981';
                     
                     setTimeout(() => {
-                        button.textContent = originalText;
+                        button.innerHTML = originalInnerHTML;
                         button.style.backgroundColor = '#4f46e5';
                     }, 1500);
                 }).catch(err => {
@@ -496,6 +506,20 @@ async function handleDashboardPage(
                     alert('复制失败，请手动复制');
                 });
             }
+            
+            // 添加悬停光效果
+            document.addEventListener('mousemove', (e) => {
+                const glows = document.querySelectorAll('.glow');
+                const x = e.clientX / window.innerWidth;
+                const y = e.clientY / window.innerHeight;
+                
+                glows.forEach((glow, index) => {
+                    const offsetX = (index % 2 === 0 ? 1 : -1) * 30;
+                    const offsetY = (index % 2 === 0 ? -1 : 1) * 30;
+                    
+                    glow.style.transform = `translate(${x * offsetX}px, ${y * offsetY}px)`;
+                });
+            });
         </script>
     </body>
     </html>
@@ -506,76 +530,3 @@ async function handleDashboardPage(
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 }
-
-/**
- * 提供静态文件服务
- */
-async function serveStaticFile(request: Request, filepath: string): Promise<Response> {
-  try {
-    const resolvedPath = Deno.realPathSync(filepath);
-    const projectRoot = Deno.realPathSync(".");
-    if (!resolvedPath.startsWith(projectRoot)) {
-      return new Response("Forbidden", { status: 403 });
-    }
-
-    const file = await Deno.open(resolvedPath, { read: true });
-    const stat = await file.stat();
-
-    if (stat.isDirectory) {
-      file.close();
-      return new Response("Not Found (is directory)", { status: 404 });
-    }
-
-    return await serveFile(request, resolvedPath);
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      return new Response("Not Found", { status: 404 });
-    } else {
-      console.error("Error serving static file:", error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  }
-}
-
-// --- Start the Server ---
-console.log(`服务器正在启动... ${new Date().toISOString()}`);
-console.log(`将在端口 ${PROXY_PORT} 上监听`);
-console.log(`代理域名设置为: ${PROXY_DOMAIN}`);
-console.warn(`请通过 HTTPS 访问: https://${PROXY_DOMAIN}/`);
-console.log("可用代理路径:");
-Object.keys(apiMapping)
-  .sort()
-  .forEach((p) =>
-    console.log(`  - https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`)
-  );
-
-serve(
-  async (req) => {
-    try {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-      
-      // 处理 OPTIONS 请求（对于跨域请求的预检）
-      if (req.method === "OPTIONS") {
-        return new Response(null, {
-          status: 204,
-          headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Requested-With",
-            "Access-Control-Max-Age": "86400",
-          },
-        });
-      }
-      
-      const response = await main(req);
-      console.log(
-        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`
-      );
-      return response;
-    } catch (e) {
-      console.error("未捕获的错误:", e);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  },
-  { port: parseInt(PROXY_PORT, 10) }
-);
