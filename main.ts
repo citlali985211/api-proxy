@@ -3,7 +3,7 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 
 // --- Configuration ---
 const apiMapping = {
-  "/groq": "https://api.groq.com/openai",
+  "/xai": "https://api.x.ai",         // Grok (xAI)
   "/openai": "https://api.openai.com",
   "/gemini": "https://generativelanguage.googleapis.com",
   "/perplexity": "https://api.perplexity.ai", 
@@ -267,7 +267,9 @@ async function main(request: Request): Promise<Response> {
 async function handleApiRequest(request: Request, prefix: string, pathname: string): Promise<Response> {
   const url = new URL(request.url);
   const [_, rest] = extractPrefixAndRest(pathname, [prefix]);
-  const targetUrl = `${apiMapping[prefix]}${rest}${url.search}`;
+  // 确保路径正确格式化
+  const targetPath = rest || "";
+  const targetUrl = `${apiMapping[prefix]}${targetPath}${url.search}`;
 
   try {
     const headers = new Headers();
@@ -548,6 +550,20 @@ serve(
   async (req) => {
     try {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+      
+      // 处理 OPTIONS 请求（对于跨域请求的预检）
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Requested-With",
+            "Access-Control-Max-Age": "86400",
+          },
+        });
+      }
+      
       const response = await main(req);
       console.log(
         `[${new Date().toISOString()}] ${req.method} ${req.url} - ${response.status}`
