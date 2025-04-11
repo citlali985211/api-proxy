@@ -315,10 +315,14 @@ async function handleApiRequest(
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set("X-Content-Type-Options", "nosniff");
     responseHeaders.set("Access-Control-Allow-Origin", "*");
-    responseHeaders.set("Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS");
-    responseHeaders.set("Access-Control-Allow-Headers",
-      "Content-Type, Authorization");
+    responseHeaders.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS",
+    );
+    responseHeaders.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
 
     return new Response(response.body, {
       status: response.status,
@@ -619,7 +623,9 @@ async function handleDashboardPage(
         <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                new ClipboardJS('.copy-btn').on('success', function(e) {
+                const clipboard = new ClipboardJS('.copy-btn');
+
+                clipboard.on('success', function(e) {
                     const btn = e.trigger;
                     const originalText = btn.textContent;
                     btn.textContent = '已复制!';
@@ -629,9 +635,18 @@ async function handleDashboardPage(
                         btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
                     }, 2000);
                     e.clearSelection();
-                }).on('error', function(e) {
+                });
+
+                clipboard.on('error', function(e) {
                     console.error('复制失败:', e);
-                    alert('复制失败，请手动复制');
+                    const btn = e.trigger;
+                    btn.textContent = '复制失败，请尝试粘贴'; // 修改错误提示
+                    btn.style.background = '#f87171'; // 红色
+                    setTimeout(() => {
+                        btn.textContent = '复制';
+                        btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
+                    }, 3000);
+
                 });
             });
         </script>
