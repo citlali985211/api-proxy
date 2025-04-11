@@ -93,22 +93,24 @@ function generateLoginPage(errorMessage = ""): Response {
                 background-repeat: no-repeat;
             }
             .login-container {
-                background-color: rgba(255, 255, 255, 0.85); /* 降低遮挡，增加背景可见性 */
+                background-color: rgba(255, 255, 255, 0.05); /* 极低不透明度，背景更清晰 */
                 padding: 30px 40px;
                 border-radius: 12px;
                 box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
                 text-align: center;
                 max-width: 380px;
                 width: 90%;
-                backdrop-filter: blur(5px); /* 减少模糊效果以提高背景可见性 */
+                backdrop-filter: blur(3px); /* 进一步减少模糊 */
+                border: 1px solid rgba(255, 255, 255, 0.1);
             }
             h2 {
-                color: #333;
+                color: #f0f9ff; /* 浅蓝色白，科技感 */
                 margin-bottom: 20px;
                 font-weight: 600;
+                text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5); /* 增加可读性 */
             }
             p {
-                color: #444;
+                color: #e2e8f0; /* 浅灰色，柔和 */
                 margin-bottom: 25px;
             }
             form {
@@ -118,40 +120,43 @@ function generateLoginPage(errorMessage = ""): Response {
             label {
                 text-align: left;
                 margin-bottom: 8px;
-                color: #444;
+                color: #e2e8f0;
                 font-weight: bold;
                 font-size: 14px;
             }
             input[type="password"] {
                 padding: 12px 15px;
                 margin-bottom: 18px;
-                border: 1px solid #ccc;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                background-color: rgba(255, 255, 255, 0.05);
+                color: #ffffff;
                 border-radius: 6px;
                 font-size: 16px;
                 box-sizing: border-box;
             }
             input:focus {
                 outline: none;
-                border-color: #007bff;
-                box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+                border-color: #60a5fa;
+                box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
             }
             button {
                 padding: 12px;
-                background-color: #007bff;
+                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
                 color: white;
                 border: none;
                 border-radius: 6px;
                 cursor: pointer;
                 font-size: 16px;
                 font-weight: 600;
-                transition: background-color 0.3s ease;
+                transition: background 0.3s ease, transform 0.2s ease;
                 margin-top: 10px;
             }
             button:hover {
-                background-color: #0056b3;
+                background: linear-gradient(45deg, #2563eb, #7c3aed);
+                transform: scale(1.02);
             }
             .error-message {
-                color: #dc3545;
+                color: #f87171; /* 柔和红色错误提示 */
                 margin-top: 15px;
                 font-weight: bold;
             }
@@ -376,8 +381,8 @@ async function handleDashboardPage(
                 overflow-x: hidden;
             }
             .overlay {
-                background: rgba(0, 0, 0, 0.3); /* 降低遮挡，增加背景可见性 */
-                backdrop-filter: blur(5px); /* 减少模糊效果以提高背景可见性 */
+                background: rgba(0, 0, 0, 0.15); /* 极低不透明度，背景更清晰 */
+                backdrop-filter: blur(3px); /* 减少模糊效果 */
                 min-height: 100vh;
                 padding: 20px;
                 display: flex;
@@ -390,7 +395,7 @@ async function handleDashboardPage(
                 width: 100%;
                 max-width: 1200px;
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.1); /* 降低遮挡 */
+                background: rgba(255, 255, 255, 0.05); /* 极低不透明度 */
                 border-radius: 15px;
                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -400,14 +405,15 @@ async function handleDashboardPage(
                 font-size: 2.5rem;
                 margin-bottom: 10px;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-                background: linear-gradient(45deg, #00ff87, #60efff);
+                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
                 -webkit-background-clip: text;
                 background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
             .header p {
                 font-size: 1.1rem;
-                opacity: 0.9;
+                color: #e2e8f0; /* 浅灰色，柔和 */
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             }
             .container {
                 width: 100%;
@@ -419,8 +425,8 @@ async function handleDashboardPage(
                 padding: 10px;
             }
             .card {
-                background: rgba(255, 255, 255, 0.1); /* 降低遮挡，增加背景可见性 */
-                backdrop-filter: blur(5px); /* 减少模糊效果 */
+                background: rgba(255, 255, 255, 0.05); /* 极低不透明度 */
+                backdrop-filter: blur(3px); /* 减少模糊 */
                 border-radius: 16px;
                 overflow: hidden;
                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -437,7 +443,7 @@ async function handleDashboardPage(
             }
             .card-header {
                 padding: 15px 20px;
-                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
+                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -446,6 +452,8 @@ async function handleDashboardPage(
             .card-header h3 {
                 font-size: 1.4rem;
                 font-weight: 600;
+                color: #f0f9ff; /* 浅蓝色白 */
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             }
             .status-badge {
                 padding: 5px 12px;
@@ -454,7 +462,7 @@ async function handleDashboardPage(
                 font-weight: 500;
             }
             .online {
-                background: #00ff87;
+                background: #34d399; /* 柔和绿色 */
                 color: #000;
             }
             .card-body {
@@ -464,19 +472,22 @@ async function handleDashboardPage(
                 margin-bottom: 10px;
                 font-size: 0.95rem;
                 line-height: 1.5;
+                color: #e2e8f0; /* 浅灰色文字 */
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
             }
             .card-body code {
-                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
+                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
                 padding: 3px 8px;
                 border-radius: 5px;
                 font-size: 0.9rem;
                 display: inline-block;
                 max-width: 100%;
                 overflow-x: auto;
+                color: #f0f9ff;
             }
             .copy-btn {
-                background: linear-gradient(45deg, #00ff87, #60efff);
-                color: #000;
+                background: linear-gradient(45deg, #3b82f6, #8b5cf6); /* 蓝色到紫色渐变 */
+                color: #ffffff;
                 border: none;
                 padding: 5px 12px;
                 border-radius: 5px;
@@ -487,7 +498,7 @@ async function handleDashboardPage(
             }
             .copy-btn:hover {
                 transform: scale(1.05);
-                background: linear-gradient(45deg, #60efff, #00ff87);
+                background: linear-gradient(45deg, #2563eb, #7c3aed);
             }
             .footer {
                 margin-top: 40px;
@@ -495,10 +506,11 @@ async function handleDashboardPage(
                 font-size: 0.9rem;
                 color: rgba(255, 255, 255, 0.7);
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
+                background: rgba(255, 255, 255, 0.03); /* 极低不透明度 */
                 border-radius: 10px;
                 width: 100%;
                 max-width: 1200px;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
             }
 
             /* 动画 */
@@ -589,10 +601,10 @@ async function handleDashboardPage(
                     const btn = event.target;
                     const originalText = btn.textContent;
                     btn.textContent = '已复制!';
-                    btn.style.background = '#00ff87';
+                    btn.style.background = '#34d399'; /* 绿色反馈 */
                     setTimeout(() => {
                         btn.textContent = originalText;
-                        btn.style.background = 'linear-gradient(45deg, #00ff87, #60efff)';
+                        btn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
                     }, 2000);
                 }).catch(err => {
                     console.error('复制失败:', err);
