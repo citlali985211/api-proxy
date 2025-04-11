@@ -3,25 +3,9 @@ import { serveFile } from "https://deno.land/std/http/file_server.ts";
 
 // --- Configuration ---
 const apiMapping = {
-  "/anthropic": "https://api.anthropic.com",
-  "/cerebras": "https://api.cerebras.ai",
-  "/cohere": "https://api.cohere.ai",
-  "/discord": "https://discord.com/api",
-  "/fireworks": "https://api.fireworks.ai",
-  "/gemini": "https://generativelanguage.googleapis.com",
   "/groq": "https://api.groq.com/openai",
-  "/huggingface": "https://api-inference.huggingface.co",
-  "/meta": "https://www.meta.ai/api",
-  "/novita": "https://api.novita.ai",
-  "/nvidia": "https://integrate.api.nvidia.com",
-  "/oaipro": "https://api.oaipro.com",
   "/openai": "https://api.openai.com",
-  "/openrouter": "https://openrouter.ai/api",
-  "/portkey": "https://api.portkey.ai",
-  "/reka": "https://api.reka.ai",
-  "/telegram": "https://api.telegram.org",
-  "/together": "https://api.together.xyz",
-  "/xai": "https://api.x.ai",
+  "/gemini": "https://generativelanguage.googleapis.com",
   "/perplexity": "https://api.perplexity.ai", 
 };
 
@@ -40,17 +24,15 @@ if (!PROXY_DOMAIN) {
 
 // Check authentication environment variable
 if (!PROXY_PASSWORD) {
-  console.warn(
-    "警告: PROXY_PASSWORD 环境变量未设置。身份验证已禁用。"
-  );
+  console.warn("警告: PROXY_PASSWORD 环境变量未设置。身份验证已禁用。");
 }
 
 // --- Authentication Helper Functions ---
 
 /**
- * 根据密码哈希生成简单的身份验证令牌。
+ * 根据密码哈希生成简单的身份验证令牌
  * @param {string} password
- * @returns {Promise<string>} - SHA-256 哈希的十六进制表示。
+ * @returns {Promise<string>} - SHA-256 哈希的十六进制表示
  */
 async function generateAuthToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -62,7 +44,7 @@ async function generateAuthToken(password: string): Promise<string> {
 }
 
 /**
- * 检查当前请求是否通过 cookie 进行了身份验证。
+ * 检查当前请求是否通过 cookie 进行了身份验证
  * @param {Request} request
  * @returns {Promise<boolean>}
  */
@@ -84,9 +66,9 @@ async function isAuthenticated(request: Request): Promise<boolean> {
 }
 
 /**
- * 生成 HTML 登录页面。
- * @param {string} [errorMessage] - 可选的错误信息。
- * @returns {Response} - 登录页面的 HTML 响应。
+ * 生成 HTML 登录页面
+ * @param {string} [errorMessage] - 可选的错误信息
+ * @returns {Response} - 登录页面的 HTML 响应
  */
 function generateLoginPage(errorMessage = ""): Response {
   const errorHtml = errorMessage ? `<p class="error-message">${errorMessage}</p>` : "";
@@ -104,32 +86,25 @@ function generateLoginPage(errorMessage = ""): Response {
                 justify-content: center;
                 align-items: center;
                 min-height: 100vh;
-                background-image: url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg'); /* 背景图片 */
-                background-size: cover; /* 覆盖整个区域 */
-                background-position: center; /* 居中显示 */
-                background-repeat: no-repeat; /* 不重复 */
-                background-attachment: fixed; /* 固定背景 */
+                background-color: #f5f5f5;
                 margin: 0;
             }
             .login-container {
-                background-color: rgba(255, 255, 255, 0.75); /* 75% 不透明度 */
+                background-color: white;
                 padding: 30px 40px;
-                border-radius: 12px; /* 圆角稍大 */
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); /* 阴影更明显 */
+                border-radius: 12px;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
                 text-align: center;
-                max-width: 380px; /* 稍微加宽 */
+                max-width: 380px;
                 width: 90%;
-                backdrop-filter: blur(5px); /* 毛玻璃效果 */
-                -webkit-backdrop-filter: blur(5px); /* 兼容 Safari */
-                border: 1px solid rgba(255, 255, 255, 0.2); /* 邊框也更透明 */
             }
             h2 {
                 color: #333;
                 margin-bottom: 20px;
-                font-weight: 600; /* 标题加粗 */
+                font-weight: 600;
             }
             p {
-                color: #444; /* 段落颜色加深 */
+                color: #444;
                 margin-bottom: 25px;
             }
             form {
@@ -138,40 +113,38 @@ function generateLoginPage(errorMessage = ""): Response {
             }
             label {
                 text-align: left;
-                margin-bottom: 8px; /* 标签和输入框距离 */
-                color: #444; /* 标签颜色加深 */
+                margin-bottom: 8px;
+                color: #444;
                 font-weight: bold;
-                font-size: 14px; /* 标签字体稍小 */
+                font-size: 14px;
             }
             input[type="password"] {
-                padding: 12px 15px; /* 内边距调整 */
-                margin-bottom: 18px; /* 输入框间距 */
+                padding: 12px 15px;
+                margin-bottom: 18px;
                 border: 1px solid #ccc;
-                border-radius: 6px; /* 输入框圆角 */
+                border-radius: 6px;
                 font-size: 16px;
-                box-sizing: border-box; /* 防止 padding 影响宽度 */
-                background-color: rgba(255, 255, 255, 0.8); /* 输入框稍微透明 */
+                box-sizing: border-box;
             }
             input:focus {
-                outline: none; /* 移除默认 focus 轮廓 */
-                border-color: #007bff; /* focus 时边框变蓝 */
-                box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* 添加 focus 光晕 */
+                outline: none;
+                border-color: #007bff;
+                box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
             }
             button {
                 padding: 12px;
                 background-color: #007bff;
                 color: white;
                 border: none;
-                border-radius: 6px; /* 按钮圆角 */
+                border-radius: 6px;
                 cursor: pointer;
                 font-size: 16px;
-                font-weight: 600; /* 按钮文字加粗 */
-                transition: background-color 0.3s ease, box-shadow 0.3s ease; /* 添加阴影过渡 */
-                margin-top: 10px; /* 按钮与上方元素间距 */
+                font-weight: 600;
+                transition: background-color 0.3s ease;
+                margin-top: 10px;
             }
             button:hover {
                 background-color: #0056b3;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 悬停时加深阴影 */
             }
             .error-message {
                 color: #dc3545;
@@ -201,7 +174,7 @@ function generateLoginPage(errorMessage = ""): Response {
 }
 
 /**
- * 处理 /login 的 POST 请求。
+ * 处理 /login 的 POST 请求
  * @param {Request} request
  * @returns {Promise<Response>}
  */
@@ -240,27 +213,28 @@ async function main(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
-  // --- Authentication Check ---
-  // Only check authentication for / and /index.html
-  if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
-    const authenticated = await isAuthenticated(request);
-    if (!authenticated) {
-      console.log(`需要身份验证: ${pathname}`);
-      return generateLoginPage();
+  // 检查是否访问的是 API 端点（不需要身份验证）
+  const [prefix, _] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
+  const isApiEndpoint = prefix !== null;
+
+  // 仅对非 API 访问进行身份验证，包括主页、登录页等
+  if (!isApiEndpoint) {
+    // 处理登录请求
+    if (pathname === "/login" && request.method === "POST") {
+      return handleLogin(request);
     }
-    console.log(`已验证访问: ${pathname}`);
-  } else if (pathname === "/login" && request.method === "POST") {
-    return handleLogin(request);
-  } else if (PROXY_PASSWORD && !(pathname === "/" || pathname === "/index.html" || pathname === "/login")) {
-      // Check for authentication for other paths when a password is set
+    
+    // 如果访问的是主页或索引页，且设置了密码，则需要验证
+    if ((pathname === "/" || pathname === "/index.html") && PROXY_PASSWORD) {
       const authenticated = await isAuthenticated(request);
       if (!authenticated) {
-          console.log(`需要身份验证: ${pathname}`);
-          return new Response(generateLoginPage().body, { status: 401, headers: generateLoginPage().headers });
+        console.log(`需要身份验证: ${pathname}`);
+        return generateLoginPage();
       }
       console.log(`已验证访问: ${pathname}`);
+    }
   } else {
-    console.log("跳过身份验证。");
+    console.log(`API 端点访问，跳过身份验证: ${pathname}`);
   }
 
   // --- Route Requests ---
@@ -279,23 +253,34 @@ async function main(request: Request): Promise<Response> {
     return serveStaticFile(request, `.${pathname}`);
   }
 
-  const [prefix, rest] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
-
-  if (!prefix) {
-    return new Response("Not Found: Invalid API path.", { status: 404 });
+  // 处理 API 请求
+  if (isApiEndpoint) {
+    return handleApiRequest(request, prefix!, pathname);
   }
 
+  return new Response("Not Found: Invalid path.", { status: 404 });
+}
+
+/**
+ * 处理 API 代理请求
+ */
+async function handleApiRequest(request: Request, prefix: string, pathname: string): Promise<Response> {
+  const url = new URL(request.url);
+  const [_, rest] = extractPrefixAndRest(pathname, [prefix]);
   const targetUrl = `${apiMapping[prefix]}${rest}${url.search}`;
 
   try {
     const headers = new Headers();
-    const allowedHeaders = ["accept", "content-type", "authorization"];
+    // 允许传递所有需要的 API 请求头
     for (const [key, value] of request.headers.entries()) {
-      if (allowedHeaders.includes(key.toLowerCase())) {
+      // 跳过一些可能导致问题的头部
+      if (!["host", "connection", "content-length"].includes(key.toLowerCase())) {
         headers.set(key, value);
       }
     }
 
+    console.log(`代理请求到: ${targetUrl}`);
+    
     const response = await fetch(targetUrl, {
       method: request.method,
       headers: headers,
@@ -304,8 +289,9 @@ async function main(request: Request): Promise<Response> {
 
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set("X-Content-Type-Options", "nosniff");
-    responseHeaders.set("X-Frame-Options", "DENY");
-    responseHeaders.set("Referrer-Policy", "no-referrer");
+    responseHeaders.set("Access-Control-Allow-Origin", "*");
+    responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    responseHeaders.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
     return new Response(response.body, {
       status: response.status,
@@ -318,6 +304,9 @@ async function main(request: Request): Promise<Response> {
   }
 }
 
+/**
+ * 从路径中提取前缀和剩余部分
+ */
 function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | null, string | null] {
   prefixes.sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
@@ -328,6 +317,9 @@ function extractPrefixAndRest(pathname: string, prefixes: string[]): [string | n
   return [null, null];
 }
 
+/**
+ * 生成并返回仪表板页面
+ */
 async function handleDashboardPage(
   apiMapping: { [key: string]: string },
   domain: string
@@ -340,17 +332,16 @@ async function handleDashboardPage(
     const fullProxyUrl = `https://${domain}${proxyPath}`;
 
     tableRows += `
-      <tr class="service-card animate__animated animate__fadeInUp" style="animation-delay: ${Object.keys(apiMapping).indexOf(proxyPath) * 0.05}s;">
+      <tr>
         <td>
           <div class="flex items-center">
-            <i class="fas fa-robot service-icon" title="${proxyPath.substring(1)}"></i>
-            <code class="code flex-grow mr-2 truncate" title="${fullProxyUrl}">${fullProxyUrl}</code>
-            <button class="copy-button ml-auto flex-shrink-0" onclick="copyText('${fullProxyUrl}', this)">
-              <i class="far fa-copy"></i>
+            <code class="code">${fullProxyUrl}</code>
+            <button class="copy-button" onclick="copyText('${fullProxyUrl}', this)">
+              复制
             </button>
           </div>
         </td>
-        <td><code class="code truncate" title="${targetUrl}">${targetUrl}</code></td>
+        <td><code class="code">${targetUrl}</code></td>
         <td><span class="status-badge">在线</span></td>
       </tr>
     `;
@@ -360,256 +351,145 @@ async function handleDashboardPage(
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>
-        <title>API Proxy Service</title>
+        <title>API 代理服务</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="安全可靠的 API 代理服务，提供常用 AI 和其他 API 的代理访问点。">
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
-        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+        <meta name="description" content="安全可靠的 API 代理服务">
         <style>
-            :root {
-              --header-gradient-start: #7928CA; /* Purple */
-              --header-gradient-end: #FF0080;   /* Pink */
-              --status-badge-bg: #22C55E;   /* Green */
-              --link-color: #3B82F6;       /* Blue */
-              --link-hover-color: #6366F1;   /* Indigo */
-              --code-bg: #F3F4F6;        /* Gray */
-              --code-text: #4B5563;       /* Dark Gray */
-              --table-hover-bg: #F9FAFB;     /* Light Gray */
-              --font-family: 'Inter', sans-serif;
-            }
-
             body {
-                font-family: var(--font-family);
-                background-color: #f8fafc; /* Light background */
-                color: #334155; /* Darker text */
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: #f8fafc;
+                color: #334155;
                 line-height: 1.6;
+                padding: 20px;
                 margin: 0;
-                padding: 0;
-                display: flex;
-                flex-direction: column;
-                min-height: 100vh;
             }
-
+            
             .container {
-                max-width: 1200px;
-                margin: 2rem auto;
-                padding: 0 1rem;
-                flex: 1;
+                max-width: 1000px;
+                margin: 0 auto;
             }
-
-            .header-card {
-                background: linear-gradient(45deg, var(--header-gradient-start), var(--header-gradient-end));
+            
+            header {
+                background: linear-gradient(45deg, #4f46e5, #06b6d4);
                 color: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-                padding: 2rem;
-                margin-bottom: 2rem;
+                padding: 20px;
+                border-radius: 10px;
                 text-align: center;
+                margin-bottom: 30px;
             }
-
-            .header-card h1 {
-                font-size: 2.5rem;
-                font-weight: 700;
-                margin-bottom: 0.5rem;
-                letter-spacing: -0.05em;
+            
+            h1 {
+                margin: 0;
+                font-size: 24px;
             }
-
-            .header-card p {
-                font-size: 1.125rem;
-                opacity: 0.9;
-            }
-
-            .table-container {
-                background-color: #fff;
-                border-radius: 12px;
-                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-                overflow-x: auto; /* Handle overflow on smaller screens */
-            }
-
+            
             table {
                 width: 100%;
+                background-color: white;
+                border-radius: 10px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                 border-collapse: collapse;
-                table-layout: fixed; /* Prevents content from overflowing */
+                overflow: hidden;
             }
-
+            
             th, td {
-                padding: 1rem;
+                padding: 15px;
                 text-align: left;
                 border-bottom: 1px solid #e5e7eb;
-                word-break: break-all; /* Breaks long words */
             }
-
+            
             th {
+                background-color: #f9fafb;
                 font-weight: 600;
-                color: #6b7280;
-                text-transform: uppercase;
-                font-size: 0.875rem;
             }
-
-            tbody tr:hover {
-                background-color: var(--table-hover-bg);
-            }
-
+            
             .code {
+                background-color: #f3f4f6;
+                padding: 4px 8px;
+                border-radius: 4px;
                 font-family: monospace;
-                background-color: var(--code-bg);
-                color: var(--code-text);
-                padding: 0.25rem 0.5rem;
-                border-radius: 6px;
-                font-size: 0.875rem;
                 word-break: break-all;
             }
-
-            .service-icon {
-                width: 20px;
-                height: 20px;
-                margin-right: 0.5rem;
-                color: #9ca3af;
-                flex-shrink: 0;
-            }
-
+            
             .copy-button {
-                background-color: #e5e7eb;
-                color: #4b5563;
-                border: none;
-                border-radius: 0.5rem;
-                padding: 0.5rem 0.75rem;
-                cursor: pointer;
-                transition: background-color 0.2s, transform 0.1s;
-                display: inline-flex;
-                align-items: center;
-                font-size: 0.75rem;
-            }
-
-            .copy-button:hover {
-                background-color: #d1d5db;
-            }
-
-            .copy-button:active {
-                transform: scale(0.95);
-            }
-
-            .status-badge {
-                display: inline-block;
-                padding: 0.375rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                background-color: var(--status-badge-bg);
+                background-color: #4f46e5;
                 color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-left: 10px;
+                font-size: 12px;
             }
-
-            .footer {
+            
+            .copy-button:hover {
+                background-color: #4338ca;
+            }
+            
+            .status-badge {
+                background-color: #10b981;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 9999px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            
+            footer {
+                margin-top: 30px;
                 text-align: center;
-                padding: 1.5rem;
+                font-size: 14px;
                 color: #6b7280;
-                font-size: 0.875rem;
-                margin-top: 2rem;
-                border-top: 1px solid #e5e7eb;
             }
-
-            .footer a {
-                color: var(--link-color);
-                text-decoration: none;
-            }
-
-            .footer a:hover {
-                text-decoration: underline;
-            }
-
+            
             @media (max-width: 768px) {
-                .header-card {
-                    padding: 1.5rem;
-                }
-
-                .header-card h1 {
-                    font-size: 2rem;
-                }
-
-                th, td {
-                    padding: 0.75rem;
+                table {
+                    display: block;
+                    overflow-x: auto;
                 }
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <header class="header-card animate__animated animate__fadeInDown">
-                <h1>API Proxy Service</h1>
-                <p>安全可靠的 API 代理服务</p>
+            <header>
+                <h1>API 代理服务</h1>
             </header>
 
-            <main class="table-container animate__animated animate__fadeIn" style="animation-delay: 0.2s;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>代理地址</th>
-                            <th>源地址</th>
-                            <th>状态</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-            </main>
+            <table>
+                <thead>
+                    <tr>
+                        <th>代理地址</th>
+                        <th>源地址</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
 
-            <footer class="footer">
-                Created by
-                <a href="https://jxufe.icu/u/piter/summary" target="_blank" rel="noopener noreferrer">
-                    piter
-                </a>
-                |
-                本站由
-                <a href="https://jxufe.icu" target="_blank" rel="noopener noreferrer">
-                    deno
-                </a>
-                赞助
+            <footer>
+                © ${new Date().getFullYear()} API 代理服务
             </footer>
         </div>
 
         <script>
-            function copyText(text, buttonElement) {
-                if (!navigator.clipboard) {
-                    try {
-                        const textarea = document.createElement('textarea');
-                        textarea.value = text;
-                        textarea.style.position = 'fixed';
-                        document.body.appendChild(textarea);
-                        textarea.focus();
-                        textarea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textarea);
-                        showCopiedFeedback(buttonElement);
-                    } catch (err) {
-                        console.error('Fallback: Oops, unable to copy', err);
-                        alert('复制失败，请手动复制。');
-                    }
-                    return;
-                }
+            function copyText(text, button) {
                 navigator.clipboard.writeText(text).then(() => {
-                    showCopiedFeedback(buttonElement);
+                    const originalText = button.textContent;
+                    button.textContent = '已复制!';
+                    button.style.backgroundColor = '#10b981';
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.backgroundColor = '#4f46e5';
+                    }, 1500);
                 }).catch(err => {
-                    console.error('Async: Could not copy text: ', err);
-                    alert('复制失败，请检查浏览器权限或手动复制。');
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制');
                 });
-            }
-
-            function showCopiedFeedback(buttonElement) {
-                const originalIcon = buttonElement.innerHTML;
-                buttonElement.innerHTML = '<i class="fas fa-check"></i>';
-                buttonElement.classList.add('copied');
-                buttonElement.disabled = true;
-
-                setTimeout(() => {
-                    buttonElement.innerHTML = originalIcon;
-                    buttonElement.classList.remove('copied');
-                    buttonElement.disabled = false;
-                }, 1200);
             }
         </script>
     </body>
@@ -622,6 +502,9 @@ async function handleDashboardPage(
   });
 }
 
+/**
+ * 提供静态文件服务
+ */
 async function serveStaticFile(request: Request, filepath: string): Promise<Response> {
   try {
     const resolvedPath = Deno.realPathSync(filepath);
@@ -653,9 +536,7 @@ async function serveStaticFile(request: Request, filepath: string): Promise<Resp
 console.log(`服务器正在启动... ${new Date().toISOString()}`);
 console.log(`将在端口 ${PROXY_PORT} 上监听`);
 console.log(`代理域名设置为: ${PROXY_DOMAIN}`);
-console.warn(
-  `请通过 HTTPS 访问: https://${PROXY_DOMAIN}/ (假设端口 443 由反向代理处理)`
-);
+console.warn(`请通过 HTTPS 访问: https://${PROXY_DOMAIN}/`);
 console.log("可用代理路径:");
 Object.keys(apiMapping)
   .sort()
@@ -679,15 +560,3 @@ serve(
   },
   { port: parseInt(PROXY_PORT, 10) }
 );
-
-// Helper function to decode Base64 using atob
-function decodeBase64(base64String: string): string {
-  try {
-    const decodedString = atob(base64String);
-    return new TextDecoder().decode(new Uint8Array(decodedString.split('').map(char => char.charCodeAt(0))));
-  } catch (error) {
-    console.error("Error decoding Base64:", error);
-    return "";
-  }
-}
-
