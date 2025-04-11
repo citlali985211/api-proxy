@@ -25,7 +25,6 @@ if (!PROXY_PASSWORD) {
 }
 
 // --- Authentication Helper Functions ---
-
 async function generateAuthToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -54,7 +53,6 @@ function generateLoginPage(errorMessage = ""): Response {
   const errorHtml = errorMessage
     ? `<p class="error-message">${errorMessage}</p>`
     : "";
-  // (登录页面的 HTML 和 CSS 保持不变，如果你也想美化它，请告知)
   const html = `
     <!DOCTYPE html>
     <html>
@@ -63,7 +61,6 @@ function generateLoginPage(errorMessage = ""): Response {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta charset="UTF-8">
         <style>
-            /* Existing Login Page Styles - Kept for brevity */
             body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background-image:url('https://raw.githubusercontent.com/Nshpiter/docker-accelerate/refs/heads/main/background.jpg');background-size:cover;background-position:center;background-repeat:no-repeat}.login-container{background-color:rgba(255,255,255,.05);padding:30px 40px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.1);text-align:center;max-width:380px;width:90%;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,.1)}h2{color:#f0f9ff;margin-bottom:20px;font-weight:600;text-shadow:1px 1px 3px rgba(0,0,0,.5)}p{color:#e2e8f0;margin-bottom:25px}form{display:flex;flex-direction:column}label{text-align:left;margin-bottom:8px;color:#e2e8f0;font-weight:bold;font-size:14px}input[type=password]{padding:12px 15px;margin-bottom:18px;border:1px solid rgba(255,255,255,.2);background-color:rgba(255,255,255,.1);color:#fff;border-radius:6px;font-size:16px;box-sizing:border-box}input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.3)}button{padding:12px;background:linear-gradient(45deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight:600;transition:background .3s ease,transform .2s ease;margin-top:10px}button:hover{background:linear-gradient(45deg,#2563eb,#7c3aed);transform:scale(1.02)}.error-message{color:#f87171;margin-top:15px;font-weight:bold}
         </style>
     </head>
@@ -118,7 +115,6 @@ async function main(request: Request): Promise<Response> {
   const [prefix, _] = extractPrefixAndRest(pathname, Object.keys(apiMapping));
   const isApiEndpoint = prefix !== null;
 
-  // Authentication check for non-API pages (dashboard)
   if (!isApiEndpoint) {
     if (pathname === "/login" && request.method === "POST") {
       return handleLogin(request);
@@ -144,9 +140,8 @@ async function main(request: Request): Promise<Response> {
   }
 
   if (pathname.startsWith("/public/")) {
-    // Basic protection against directory traversal
     if (pathname.includes("..")) {
-         return new Response("Forbidden", { status: 403 });
+      return new Response("Forbidden", { status: 403 });
     }
     return serveStaticFile(request, `.${pathname}`);
   }
@@ -170,10 +165,8 @@ async function handleApiRequest(
 
   try {
     const headers = new Headers(request.headers);
-    // Remove headers that might cause issues when proxying
     headers.delete("host");
     headers.delete("connection");
-    // Content-Length is often recalculated by fetch, removing it can avoid conflicts
     headers.delete("content-length");
 
     console.log(`Proxying ${request.method} ${pathname} to ${targetUrl}`);
@@ -182,13 +175,10 @@ async function handleApiRequest(
       method: request.method,
       headers: headers,
       body: request.body,
-      redirect: 'manual', // Handle redirects manually if needed, often safer for proxies
+      redirect: "manual", // Handle redirects manually if needed, often safer for proxies
     });
 
-    // Important: Clone headers before modification if you might reuse response.headers
     const responseHeaders = new Headers(response.headers);
-
-    // Add common security and CORS headers
     responseHeaders.set("X-Content-Type-Options", "nosniff");
     responseHeaders.set("Access-Control-Allow-Origin", "*"); // Be cautious with '*' in production
     responseHeaders.set(
@@ -199,11 +189,9 @@ async function handleApiRequest(
       "Access-Control-Allow-Headers",
       "Content-Type, Authorization, X-Requested-With", // Add common headers
     );
-    // Remove potential security risks from proxied response
-    responseHeaders.delete('Content-Security-Policy');
-    responseHeaders.delete('Strict-Transport-Security');
-    responseHeaders.delete('Public-Key-Pins');
-
+    responseHeaders.delete("Content-Security-Policy");
+    responseHeaders.delete("Strict-Transport-Security");
+    responseHeaders.delete("Public-Key-Pins");
 
     return new Response(response.body, {
       status: response.status,
@@ -220,7 +208,6 @@ function extractPrefixAndRest(
   pathname: string,
   prefixes: string[],
 ): [string | null, string | null] {
-    // Sort prefixes by length descending to match longest first (e.g., /v1/beta before /v1)
   prefixes.sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
     if (pathname.startsWith(prefix)) {
@@ -314,7 +301,7 @@ async function handleDashboardPage(
                 line-height: 1.6;
             }
             .overlay {
-                background: linear-gradient(180deg, rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.9)); /* Gradient overlay */
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.85)); /* 调整透明度 */
                 backdrop-filter: blur(8px);
                 min-height: 100vh;
                 padding: clamp(20px, 5vw, 50px); /* Responsive padding */
@@ -467,6 +454,14 @@ async function handleDashboardPage(
                 width: 100%;
                 max-width: 900px;
             }
+            .footer a {
+                color: var(--text-secondary);
+                text-decoration: none;
+                transition: color 0.3s ease;
+            }
+            .footer a:hover {
+                color: var(--text-primary);
+            }
             @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         </style>
@@ -481,7 +476,7 @@ async function handleDashboardPage(
                 ${cardsHtml}
             </main>
             <footer class="footer">
-                © ${new Date().getFullYear()} API 代理服务 - powered by piter
+                © ${new Date().getFullYear()} API 代理服务 - powered by <a href="https://jxufe.icu/u/piter/summary" target="_blank" rel="noopener noreferrer">piter</a>
             </footer>
         </div>
 
@@ -490,11 +485,11 @@ async function handleDashboardPage(
             document.addEventListener('DOMContentLoaded', function() {
                 const clipboard = new ClipboardJS('.copy-btn');
                 const originalIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-                const successIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; // Checkmark
+                const successIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
                 clipboard.on('success', function(e) {
                     const btn = e.trigger;
-                    btn.innerHTML = successIcon; // Show checkmark
+                    btn.innerHTML = successIcon;
                     btn.classList.add('copied');
 
                     setTimeout(() => {
@@ -507,8 +502,7 @@ async function handleDashboardPage(
                 clipboard.on('error', function(e) {
                     console.error('复制失败，但可能已在剪贴板中:', e);
                     const btn = e.trigger;
-                    // Indicate potential success despite error event
-                    btn.innerHTML = '?'; // Maybe a question mark?
+                    btn.innerHTML = '?';
                     btn.classList.add('error');
                     btn.title = '复制可能已成功，请尝试粘贴';
 
@@ -530,9 +524,11 @@ async function handleDashboardPage(
   });
 }
 
-async function serveStaticFile(request: Request, filepath: string): Promise<Response> {
+async function serveStaticFile(
+  request: Request,
+  filepath: string,
+): Promise<Response> {
   try {
-    // Basic path sanitization (more robust checks might be needed depending on use case)
     const resolvedPath = Deno.realPathSync(filepath);
     const projectRoot = Deno.realPathSync(".");
 
@@ -546,10 +542,9 @@ async function serveStaticFile(request: Request, filepath: string): Promise<Resp
     if (error instanceof Deno.errors.NotFound) {
       return new Response("Not Found", { status: 404 });
     } else if (error instanceof Deno.errors.PermissionDenied) {
-        console.error(`Permission denied for static file: ${filepath}`);
-        return new Response("Forbidden", { status: 403 });
-    }
-     else {
+      console.error(`Permission denied for static file: ${filepath}`);
+      return new Response("Forbidden", { status: 403 });
+    } else {
       console.error(`Error serving static file ${filepath}:`, error);
       return new Response("Internal Server Error", { status: 500 });
     }
@@ -562,9 +557,11 @@ console.log(`  Port: ${PROXY_PORT}`);
 console.log(`  Domain: ${PROXY_DOMAIN}`);
 if (!PROXY_PASSWORD) console.warn("  Authentication: DISABLED");
 console.log("  Proxy Endpoints:");
-Object.keys(apiMapping).sort().forEach(p =>
-    console.log(`    https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`)
-);
+Object.keys(apiMapping)
+  .sort()
+  .forEach((p) =>
+    console.log(`    https://${PROXY_DOMAIN}${p} -> ${apiMapping[p]}`),
+  );
 console.warn(`Ensure your proxy is accessed via HTTPS: https://${PROXY_DOMAIN}/`);
 
 serve(
@@ -572,14 +569,15 @@ serve(
     const start = performance.now();
     let responseStatus = 500; // Default to error
     try {
-      // Handle CORS preflight requests globally
       if (req.method === "OPTIONS") {
         return new Response(null, {
           status: 204, // No Content
           headers: {
             "Access-Control-Allow-Origin": "*", // Adjust in production if needed
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+            "Access-Control-Allow-Methods":
+              "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Headers":
+              "Content-Type, Authorization, X-Requested-With",
             "Access-Control-Max-Age": "86400", // Cache preflight for 1 day
           },
         });
@@ -588,16 +586,18 @@ serve(
       const response = await main(req);
       responseStatus = response.status;
       return response;
-
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Unhandled error for ${req.method} ${req.url}:`, error);
-      // Avoid leaking detailed errors to the client
+      console.error(
+        `[${new Date().toISOString()}] Unhandled error for ${req.method} ${req.url}:`,
+        error,
+      );
       return new Response("Internal Server Error", { status: 500 });
     } finally {
-        const duration = performance.now() - start;
-        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${responseStatus} (${duration.toFixed(2)}ms)`);
+      const duration = performance.now() - start;
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${req.url} - ${responseStatus} (${duration.toFixed(2)}ms)`,
+      );
     }
   },
   { port: parseInt(PROXY_PORT, 10) },
 );
-
