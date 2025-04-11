@@ -25,6 +25,7 @@ if (!PROXY_PASSWORD) {
 }
 
 // --- Authentication Helper Functions ---
+
 async function generateAuthToken(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -301,7 +302,7 @@ async function handleDashboardPage(
                 line-height: 1.6;
             }
             .overlay {
-                background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.85)); /* 调整透明度 */
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.35), rgba(15, 23, 42, 0.65)); /* 更低的透明度 */
                 backdrop-filter: blur(8px);
                 min-height: 100vh;
                 padding: clamp(20px, 5vw, 50px); /* Responsive padding */
