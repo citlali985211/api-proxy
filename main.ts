@@ -93,14 +93,14 @@ function generateLoginPage(errorMessage = ""): Response {
                 background-repeat: no-repeat;
             }
             .login-container {
-                background-color: rgba(255, 255, 255, 0.95);
+                background-color: rgba(255, 255, 255, 0.85); /* 降低遮挡，增加背景可见性 */
                 padding: 30px 40px;
                 border-radius: 12px;
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
                 text-align: center;
                 max-width: 380px;
                 width: 90%;
-                backdrop-filter: blur(10px);
+                backdrop-filter: blur(5px); /* 减少模糊效果以提高背景可见性 */
             }
             h2 {
                 color: #333;
@@ -376,8 +376,8 @@ async function handleDashboardPage(
                 overflow-x: hidden;
             }
             .overlay {
-                background: rgba(0, 0, 0, 0.5);
-                backdrop-filter: blur(15px);
+                background: rgba(0, 0, 0, 0.3); /* 降低遮挡，增加背景可见性 */
+                backdrop-filter: blur(5px); /* 减少模糊效果以提高背景可见性 */
                 min-height: 100vh;
                 padding: 20px;
                 display: flex;
@@ -390,10 +390,10 @@ async function handleDashboardPage(
                 width: 100%;
                 max-width: 1200px;
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.1); /* 降低遮挡 */
                 border-radius: 15px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.18);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 animation: fadeInDown 0.8s ease-out;
             }
             .header h1 {
@@ -419,12 +419,12 @@ async function handleDashboardPage(
                 padding: 10px;
             }
             .card {
-                background: rgba(255, 255, 255, 0.15);
-                backdrop-filter: blur(10px);
+                background: rgba(255, 255, 255, 0.1); /* 降低遮挡，增加背景可见性 */
+                backdrop-filter: blur(5px); /* 减少模糊效果 */
                 border-radius: 16px;
                 overflow: hidden;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.18);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
                 width: 100%;
                 min-width: 300px;
                 max-width: 550px;
@@ -433,15 +433,15 @@ async function handleDashboardPage(
             }
             .card:hover {
                 transform: translateY(-10px);
-                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
             }
             .card-header {
                 padding: 15px 20px;
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             .card-header h3 {
                 font-size: 1.4rem;
@@ -466,7 +466,7 @@ async function handleDashboardPage(
                 line-height: 1.5;
             }
             .card-body code {
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
                 padding: 3px 8px;
                 border-radius: 5px;
                 font-size: 0.9rem;
@@ -495,7 +495,7 @@ async function handleDashboardPage(
                 font-size: 0.9rem;
                 color: rgba(255, 255, 255, 0.7);
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.05);
+                background: rgba(255, 255, 255, 0.05); /* 降低遮挡 */
                 border-radius: 10px;
                 width: 100%;
                 max-width: 1200px;
